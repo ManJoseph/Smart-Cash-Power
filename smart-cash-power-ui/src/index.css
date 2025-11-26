@@ -1,0 +1,16 @@
+/* Tailwind CSS v4 import */
+@import "tailwindcss";
+
+html, body, #root {
+  height: 100%;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  background: #f3f4f6; /* tailwind bg-gray-100 fallback */
+}
