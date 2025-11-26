@@ -1,6 +1,55 @@
 /* Tailwind CSS v4 import */
 @import "tailwindcss";
 
+:root {
+  /* Colors */
+  --primary: #6750A4;
+  --on-primary: #FFFFFF;
+  --primary-container: #EADDFF;
+  --on-primary-container: #21005D;
+
+  --secondary: #625B71;
+  --secondary-container: #E8DEF8;
+
+  --tertiary: #7D5260;
+
+  --surface: #FFFBFE;
+  --on-surface: #1C1B1F;
+  --surface-variant: #E7E0EC;
+  --on-surface-variant: #49454F;
+
+  --outline: #79747E;
+
+  --error: #B3261E;
+  --on-error: #FFFFFF;
+
+  /* Typography */
+  --font-display-large: 57px;
+  --font-title-large: 22px;
+  --font-body: 16px;
+  --font-label-small: 11px;
+
+  /* Shapes */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 28px;
+  --radius-full: 1000px;
+
+  /* Spacing */
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.12);
+  --shadow-md: 0 4px 8px rgba(0,0,0,0.14);
+  --shadow-lg: 0 8px 16px rgba(0,0,0,0.16);
+
+  /* Transitions */
+  --transition-normal: 0.25s ease;
+}
+
 html, body, #root {
   height: 100%;
 }
@@ -12,5 +61,5 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-  background: #f3f4f6; /* tailwind bg-gray-100 fallback */
+  background: var(--surface);
 }

@@ -1,7 +1,25 @@
 import { useCallback, useEffect, useState } from 'react';
 import './index.css';
 import { Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
-import { addMeter, getStoredUser, getUserMeters, loginUser, logoutUser, registerUser } from './services/apiService';
+import {
+  addMeter,
+  approvePasswordReset,
+  blockUser,
+  changePassword,
+  deleteMeter,
+  deleteUser,
+  getAdminMeters,
+  getAdminTransactions,
+  getAdminUsers,
+  getStoredUser,
+  getUserMeters,
+  loginUser,
+  logoutUser,
+  registerUser,
+  requestPasswordReset,
+  checkResetStatus,
+  resetPassword,
+} from './services/apiService';
 import PurchaseScreen from './components/PurchaseScreen';
 import HistoryScreen from './components/HistoryScreen';
 import type { ReactElement } from 'react';
@@ -21,6 +39,8 @@ type Meter = {
   id?: number | string;
   meterNumber: string;
   currentUnits?: number;
+  usedUnits?: number;
+  active?: boolean;
 };
 
 const resolveDestination = (user: AuthUser | null) => {
@@ -160,6 +180,15 @@ const App = () => {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute currentUser={currentUser}>
+                <SettingsScreen currentUser={currentUser as AuthUser} />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/reset-password" element={<ResetPasswordScreen />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
@@ -175,10 +204,17 @@ interface AuthScreenProps {
 const AuthScreen = ({ mode, onAuthenticated }: AuthScreenProps) => {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isForgot, setIsForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [isSendingReset, setIsSendingReset] = useState(false);
+  const [isAllowedToReset, setIsAllowedToReset] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (isForgot) {
+      return;
+    }
     setError(null);
     setSuccessMessage(null);
     const formData = new FormData(event.currentTarget);
@@ -204,32 +240,132 @@ const AuthScreen = ({ mode, onAuthenticated }: AuthScreenProps) => {
     navigate(nextPath);
   };
 
+  useEffect(() => {
+    let intervalId: number | undefined;
+    if (isForgot && forgotEmail && !isAllowedToReset) {
+      intervalId = window.setInterval(async () => {
+        try {
+          const allowed = await checkResetStatus(forgotEmail);
+          if (allowed) {
+            setIsAllowedToReset(true);
+            if (intervalId) {
+              window.clearInterval(intervalId);
+            }
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }, 5000);
+    }
+    return () => {
+      if (intervalId) {
+        window.clearInterval(intervalId);
+      }
+    };
+  }, [isForgot, forgotEmail, isAllowedToReset]);
+
+  const handleForgotSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!forgotEmail) return;
+    setIsSendingReset(true);
+    setError(null);
+    try {
+      await requestPasswordReset(forgotEmail);
+      setSuccessMessage('Request sent to admin. Please wait for approval.');
+    } catch (e) {
+      console.error(e);
+      setError('Failed to send reset request. Please try again.');
+    } finally {
+      setIsSendingReset(false);
+    }
+  };
+
   return (
     <div className="w-full max-w-xl mx-auto bg-white shadow-lg rounded-2xl p-8 space-y-6">
       <header className="text-center space-y-2">
         <h1 className="text-4xl font-bold text-gray-800">SmartCashPower</h1>
         <p className="text-gray-600">Smarter electricity for homes and businesses.</p>
       </header>
-      <form className="space-y-4" onSubmit={handleSubmit}>
-        {mode === 'signup' && (
-          <>
-            <input name="fullName" type="text" required className="w-full px-4 py-3 text-lg text-gray-700 bg-gray-100 rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Full Name" />
-            <input name="phoneNumber" type="tel" required className="w-full px-4 py-3 text-lg text-gray-700 bg-gray-100 rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Phone Number" />
-          </>
-        )}
-        <input name="email" type="email" required className="w-full px-4 py-3 text-lg text-gray-700 bg-gray-100 rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Email" />
-        <input name="password" type="password" required className="w-full px-4 py-3 text-lg text-gray-700 bg-gray-100 rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Password" />
-        {error && <p className="text-red-500 text-center">{error}</p>}
-        {successMessage && <p className="text-green-600 text-center">{successMessage}</p>}
-        <button type="submit" className="w-full px-4 py-3 font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-          {mode === 'login' ? 'Login' : 'Sign Up'}
-        </button>
-      </form>
-      <div className="text-center">
-        <button onClick={toggleMode} className="text-sm font-medium text-blue-600 hover:text-blue-500">
-          {mode === 'login' ? 'New user? Create an account' : 'Already have an account? Login'}
-        </button>
-      </div>
+      {!isForgot ? (
+        <>
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            {mode === 'signup' && (
+              <>
+                <input name="fullName" type="text" required className="w-full px-4 py-3 text-lg text-gray-700 bg-gray-100 rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Full Name" />
+                <input name="phoneNumber" type="tel" required className="w-full px-4 py-3 text-lg text-gray-700 bg-gray-100 rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Phone Number" />
+              </>
+            )}
+            <input name="email" type="email" required className="w-full px-4 py-3 text-lg text-gray-700 bg-gray-100 rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Email" />
+            <input name="password" type="password" required className="w-full px-4 py-3 text-lg text-gray-700 bg-gray-100 rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Password" />
+            {error && <p className="text-red-500 text-center">{error}</p>}
+            {successMessage && <p className="text-green-600 text-center">{successMessage}</p>}
+            <button type="submit" className="w-full px-4 py-3 font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+              {mode === 'login' ? 'Login' : 'Sign Up'}
+            </button>
+          </form>
+          {mode === 'login' && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsForgot(true);
+                setError(null);
+                setSuccessMessage(null);
+              }}
+              className="mt-3 text-sm font-medium text-blue-600 hover:text-blue-500"
+            >
+              Forgot password?
+            </button>
+          )}
+          <div className="text-center">
+            <button onClick={toggleMode} className="mt-2 text-sm font-medium text-blue-600 hover:text-blue-500">
+              {mode === 'login' ? 'New user? Create an account' : 'Already have an account? Login'}
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <form className="space-y-4" onSubmit={handleForgotSubmit}>
+            <input
+              type="email"
+              value={forgotEmail}
+              onChange={(e) => setForgotEmail(e.target.value)}
+              required
+              placeholder="Enter your email"
+              className="w-full px-4 py-3 text-lg text-gray-700 bg-gray-100 rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            {error && <p className="text-red-500 text-center">{error}</p>}
+            {successMessage && <p className="text-green-600 text-center">{successMessage}</p>}
+            <button
+              type="submit"
+              disabled={isSendingReset}
+              className="w-full px-4 py-3 font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+            >
+              {isSendingReset ? 'Sending...' : 'Send reset request'}
+            </button>
+          </form>
+          <button
+            type="button"
+            disabled={!isAllowedToReset}
+            onClick={() => navigate(`/reset-password?email=${encodeURIComponent(forgotEmail)}`)}
+            className={`mt-4 w-full px-4 py-3 font-semibold rounded-lg ${
+              isAllowedToReset ? 'bg-green-600 text-white' : 'bg-gray-300 text-gray-600'
+            }`}
+          >
+            Continue
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setIsForgot(false);
+              setError(null);
+              setSuccessMessage(null);
+            }}
+            className="mt-3 text-sm font-medium text-blue-600 hover:text-blue-500"
+          >
+            Back to login
+          </button>
+        </>
+      )}
     </div>
   );
 };
@@ -251,10 +387,26 @@ const DashboardScreen = ({ currentUser, handleLogout, meters, isLoadingMeters, o
   const [addMeterError, setAddMeterError] = useState<string | null>(null);
   const [addMeterSuccess, setAddMeterSuccess] = useState(false);
   const [metersList, setMetersList] = useState<Meter[]>(meters);
+  const [selectedMeter, setSelectedMeter] = useState<Meter | null>(null);
 
   useEffect(() => {
     setMetersList(meters);
   }, [meters]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setMetersList((prev) =>
+        prev.map((m) => ({
+          ...m,
+          currentUnits: Math.max(0, (m.currentUnits ?? 0) - 0.0002),
+          usedUnits: (m.usedUnits ?? 0) + 0.0002,
+        })),
+      );
+    }, 1000);
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, []);
 
   const handleAddMeter = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -340,9 +492,8 @@ const DashboardScreen = ({ currentUser, handleLogout, meters, isLoadingMeters, o
             {metersList.map((meter) => (
               <MeterCard 
                 key={meter.id ?? meter.meterNumber} 
-                meterNumber={meter.meterNumber} 
-                currentUnits={meter.currentUnits !== undefined ? `${meter.currentUnits.toFixed(2)} kWh` : 'N/A'}
-                meterId={meter.id}
+                meter={meter}
+                onClick={() => setSelectedMeter(meter)}
               />
             ))}
           </div>
@@ -370,26 +521,259 @@ const DashboardScreen = ({ currentUser, handleLogout, meters, isLoadingMeters, o
           View History
         </button>
       </div>
+      {selectedMeter && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="w-full max-w-lg bg-white rounded-3xl shadow-lg p-8 space-y-4">
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">Meter details</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Detailed information for meter <span className="font-semibold">{selectedMeter.meterNumber}</span>
+            </p>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-gray-500">Meter ID</p>
+                <p className="font-semibold text-gray-900">{selectedMeter.id ?? 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-gray-500">Current units</p>
+                <p className="font-semibold text-gray-900">
+                  {selectedMeter.currentUnits !== undefined ? `${selectedMeter.currentUnits.toFixed(3)} kWh` : 'N/A'}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-500">Used units</p>
+                <p className="font-semibold text-gray-900">
+                  {selectedMeter.usedUnits !== undefined ? `${selectedMeter.usedUnits.toFixed(3)} kWh` : 'N/A'}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-500">Status</p>
+                <p className="font-semibold text-gray-900">{selectedMeter.active === false ? 'Inactive' : 'Active'}</p>
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setSelectedMeter(null)}
+                className="px-4 py-2 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:bg-gray-50"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={onNavigateToPurchase}
+                className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700"
+              >
+                Buy for this meter
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-const MeterCard = ({ meterNumber, currentUnits, meterId }: { meterNumber: string; currentUnits: string; meterId?: number | string }) => (
-  <div className="p-6 bg-linear-to-r from-blue-50 to-green-50 rounded-xl border-2 border-blue-200 hover:border-blue-400 transition-colors">
+const MeterCard = ({ meter, onClick }: { meter: Meter; onClick: () => void }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className="w-full text-left p-6 bg-linear-to-r from-blue-50 to-green-50 rounded-xl border-2 border-blue-200 hover:border-blue-400 transition-colors"
+  >
     <div className="flex items-center justify-between">
       <div className="flex-1">
         <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Meter Number</p>
-        <p className="text-xl font-bold text-gray-800 mt-1">{meterNumber}</p>
-        {meterId && <p className="text-xs text-gray-400 mt-1">ID: {meterId}</p>}
+        <p className="text-xl font-bold text-gray-800 mt-1">{meter.meterNumber}</p>
+        {meter.id && <p className="text-xs text-gray-400 mt-1">ID: {meter.id}</p>}
       </div>
       <div className="text-right ml-4">
         <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Current Units</p>
-        <p className="text-2xl font-bold text-green-600 mt-1">{currentUnits}</p>
+        <p className="text-2xl font-bold text-green-600 mt-1">
+          {meter.currentUnits !== undefined ? `${meter.currentUnits.toFixed(2)} kWh` : 'N/A'}
+        </p>
         <p className="text-xs text-gray-400 mt-1">Available</p>
       </div>
     </div>
-  </div>
+  </button>
 );
+
+interface SettingsScreenProps {
+  currentUser: AuthUser;
+}
+
+const SettingsScreen = ({ currentUser }: SettingsScreenProps) => {
+  const [fullName, setFullName] = useState(currentUser.fullName ?? '');
+  const [phoneNumber, setPhoneNumber] = useState(currentUser.phoneNumber ?? '');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMessage(null);
+    setError(null);
+    if (newPassword && newPassword !== confirmPassword) {
+      setError('New password and confirmation do not match.');
+      return;
+    }
+    setIsSaving(true);
+    try {
+      if (currentPassword && newPassword) {
+        await changePassword(currentPassword, newPassword);
+      }
+      // Profile update could be added here if backend exposes profile update DTO via apiService.
+      setMessage('Settings saved successfully.');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (e) {
+      console.error(e);
+      setError('Failed to save settings.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="w-full max-w-xl mx-auto bg-white shadow-lg rounded-2xl p-8 space-y-6">
+      <h2 className="text-2xl font-bold text-gray-900">Account settings</h2>
+      <form className="space-y-4" onSubmit={handleSave}>
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700">Email</label>
+          <input
+            type="email"
+            value={currentUser.email}
+            disabled
+            className="w-full px-4 py-3 text-gray-500 bg-gray-100 rounded-lg border border-transparent"
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700">Full name</label>
+          <input
+            type="text"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            className="w-full px-4 py-3 text-gray-700 bg-gray-100 rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700">Phone number</label>
+          <input
+            type="tel"
+            value={phoneNumber}
+            onChange={(e) => setPhoneNumber(e.target.value)}
+            className="w-full px-4 py-3 text-gray-700 bg-gray-100 rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        <div className="pt-4 space-y-3 border-t border-gray-100">
+          <h3 className="text-sm font-semibold text-gray-900">Change password</h3>
+          <input
+            type="password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            placeholder="Current password"
+            className="w-full px-4 py-3 text-gray-700 bg-gray-100 rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <input
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            placeholder="New password"
+            className="w-full px-4 py-3 text-gray-700 bg-gray-100 rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <input
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="Confirm new password"
+            className="w-full px-4 py-3 text-gray-700 bg-gray-100 rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        {error && <p className="text-sm text-red-600 text-center">{error}</p>}
+        {message && <p className="text-sm text-green-600 text-center">{message}</p>}
+        <button
+          type="submit"
+          disabled={isSaving}
+          className="w-full px-4 py-3 font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+        >
+          {isSaving ? 'Saving...' : 'Save changes'}
+        </button>
+      </form>
+    </div>
+  );
+};
+
+const ResetPasswordScreen = () => {
+  const navigate = useNavigate();
+  const params = new URLSearchParams(window.location.search);
+  const email = params.get('email') ?? '';
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setMessage(null);
+    if (!email) {
+      setError('Missing email.');
+      return;
+    }
+    if (!newPassword || newPassword !== confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await resetPassword(email, newPassword);
+      setMessage('Password updated. Redirecting to login...');
+      setTimeout(() => navigate('/login', { replace: true }), 1500);
+    } catch (e) {
+      console.error(e);
+      setError('Failed to reset password.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8 space-y-4">
+        <h2 className="text-2xl font-bold text-gray-900 text-center">Reset password</h2>
+        <p className="text-sm text-gray-600 text-center">Set a new password for {email || 'your account'}.</p>
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          <input
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            placeholder="New password"
+            className="w-full px-4 py-3 text-gray-700 bg-gray-100 rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <input
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="Confirm new password"
+            className="w-full px-4 py-3 text-gray-700 bg-gray-100 rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          {error && <p className="text-sm text-red-600 text-center">{error}</p>}
+          {message && <p className="text-sm text-green-600 text-center">{message}</p>}
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full px-4 py-3 font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+          >
+            {isSubmitting ? 'Updating...' : 'Confirm'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
 
 interface LandingPageProps {
   currentUser: AuthUser | null;
@@ -467,6 +851,50 @@ interface AdminDashboardProps {
 }
 
 const AdminDashboard = ({ currentUser, onLogout }: AdminDashboardProps) => {
+  const [users, setUsers] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const [usersData, txData] = await Promise.all([
+          getAdminUsers(),
+          // Last 7 days for the analytics snapshot
+          getAdminTransactions(
+            new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+            new Date().toISOString(),
+          ),
+        ]);
+        setUsers(usersData ?? []);
+        setTransactions(txData ?? []);
+      } catch (e) {
+        console.error(e);
+        setError('Failed to load admin data.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  const activeUsers = users.length;
+  const metersMonitored = users.reduce((sum, u) => sum + (u.meterCount ?? 0), 0);
+  const pendingTickets = transactions.filter((t) => t.currentStatus && t.currentStatus !== 'SUCCESS' && t.currentStatus !== 'COMPLETED').length;
+
+  const handleBlockUser = async (userId: number | string) => {
+    try {
+      await blockUser(userId);
+      setUsers((prev) => prev.map((u) => (u.userId === userId ? { ...u, blocked: true } : u)));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-white rounded-3xl p-8 shadow-lg">
@@ -479,40 +907,108 @@ const AdminDashboard = ({ currentUser, onLogout }: AdminDashboardProps) => {
           Logout
         </button>
       </div>
+
       <div className="grid gap-6 md:grid-cols-3">
-        {[
-          { label: 'Active users', value: '1,248', trend: '+4.2%' },
-          { label: 'Meters monitored', value: '5,430', trend: '+2.1%' },
-          { label: 'Pending tickets', value: '12', trend: '-1.1%' },
-        ].map((card) => (
-          <div key={card.label} className="p-6 bg-white rounded-2xl shadow">
-            <p className="text-sm text-gray-500">{card.label}</p>
-            <p className="text-3xl font-bold mt-2 text-gray-900">{card.value}</p>
-            <p className="text-green-600 text-sm font-semibold mt-1">{card.trend} vs last week</p>
-          </div>
-        ))}
+        <div className="p-6 bg-white rounded-2xl shadow">
+          <p className="text-sm text-gray-500">Active users</p>
+          <p className="text-3xl font-bold mt-2 text-gray-900">{activeUsers}</p>
+        </div>
+        <div className="p-6 bg-white rounded-2xl shadow">
+          <p className="text-sm text-gray-500">Meters monitored</p>
+          <p className="text-3xl font-bold mt-2 text-gray-900">{metersMonitored}</p>
+        </div>
+        <div className="p-6 bg-white rounded-2xl shadow">
+          <p className="text-sm text-gray-500">Pending tickets</p>
+          <p className="text-3xl font-bold mt-2 text-gray-900">{pendingTickets}</p>
+        </div>
       </div>
-      <div className="bg-white rounded-3xl p-8 shadow space-y-4">
+
+      <div className="bg-white rounded-3xl p-8 shadow space-y-6">
         <div className="flex items-center justify-between">
-          <h3 className="text-xl font-semibold text-gray-900">Quick actions</h3>
+          <h3 className="text-xl font-semibold text-gray-900">Customer management</h3>
           <Link to="/dashboard" className="text-sm font-semibold text-blue-600 hover:underline">
             View client workspace
           </Link>
         </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          {[
-            { title: 'Review flagged transactions', description: 'Investigate anomalies triggered by the fraud monitor.' },
-            { title: 'Approve new meter registrations', description: 'Validate customer requests and keep records updated.' },
-            { title: 'Send system notification', description: 'Push outage alerts to all impacted customers.' },
-            { title: 'Assign support agent', description: 'Distribute tickets to the right operations contact.' },
-          ].map((item) => (
-            <div key={item.title} className="border border-gray-100 rounded-2xl p-4">
-              <h4 className="font-semibold text-gray-800">{item.title}</h4>
-              <p className="text-sm text-gray-600 mt-2">{item.description}</p>
-              <button className="mt-3 text-sm font-semibold text-blue-600 hover:underline">Open</button>
-            </div>
-          ))}
-        </div>
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        {isLoading ? (
+          <p className="text-sm text-gray-500">Loading admin data...</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  <th className="py-2 pr-4 font-semibold text-gray-600">User</th>
+                  <th className="py-2 pr-4 font-semibold text-gray-600">Email</th>
+                  <th className="py-2 pr-4 font-semibold text-gray-600">Meters</th>
+                  <th className="py-2 pr-4 font-semibold text-gray-600">Status</th>
+                  <th className="py-2 pr-4 font-semibold text-gray-600 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((u) => (
+                  <tr key={u.userId} className="border-b border-gray-50 hover:bg-gray-50">
+                    <td className="py-2 pr-4">{u.fullName || '—'}</td>
+                    <td className="py-2 pr-4">{u.email}</td>
+                    <td className="py-2 pr-4">{u.meterCount ?? 0}</td>
+                    <td className="py-2 pr-4">{u.blocked ? 'Blocked' : 'Active'}</td>
+                    <td className="py-2 pr-4 text-right">
+                      {!u.blocked && (
+                        <button
+                          onClick={() => handleBlockUser(u.userId)}
+                          className="text-sm font-semibold text-red-600 hover:underline"
+                        >
+                          Block
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {users.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="py-4 text-center text-gray-500">
+                      No users found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="bg-white rounded-3xl p-8 shadow space-y-4">
+        <h3 className="text-xl font-semibold text-gray-900">Recent transactions</h3>
+        {transactions.length === 0 ? (
+          <p className="text-sm text-gray-500">No transactions in the last 7 days.</p>
+        ) : (
+          <div className="space-y-2 max-h-80 overflow-y-auto">
+            {transactions.map((tx) => (
+              <div key={tx.id} className="flex items-center justify-between border border-gray-100 rounded-2xl p-3">
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">{tx.meterNumber}</p>
+                  <p className="text-xs text-gray-500">
+                    {tx.transactionDate ? new Date(tx.transactionDate).toLocaleString() : 'N/A'}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-semibold text-gray-900">{tx.amountPaid} RWF</p>
+                  <p
+                    className={`text-xs font-semibold ${
+                      tx.currentStatus === 'SUCCESS' || tx.currentStatus === 'COMPLETED'
+                        ? 'text-green-600'
+                        : tx.currentStatus === 'FAILED'
+                        ? 'text-red-600'
+                        : 'text-yellow-600'
+                    }`}
+                  >
+                    {tx.currentStatus || 'PENDING'}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

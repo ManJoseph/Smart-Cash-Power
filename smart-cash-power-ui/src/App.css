@@ -1,1 +1,32 @@
 /* App-specific styles - Tailwind CSS is imported in index.css */
+
+.md-surface-card {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.md-filled-btn {
+  background: var(--primary);
+  color: var(--on-primary);
+  border-radius: var(--radius-md);
+  padding: 12px 20px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition-normal), transform var(--transition-normal);
+}
+
+.md-filled-btn:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.md-input {
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-md);
+  padding: 12px;
+}
+
+.md-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}

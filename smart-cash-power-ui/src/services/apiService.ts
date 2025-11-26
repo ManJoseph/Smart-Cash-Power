@@ -24,6 +24,22 @@ if (storedHeader) {
   setAuthHeader(storedHeader);
 }
 
+// Automatically expire sessions on 401 responses
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('user');
+      localStorage.removeItem(AUTH_HEADER_STORAGE_KEY);
+      delete api.defaults.headers.common['Authorization'];
+      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  },
+);
+
 
 // Error handler to provide user-friendly messages
 const handleApiError = (error: any): never => {
@@ -145,6 +161,112 @@ export const getTransactionHistory = async (): Promise<TransactionResponse[]> =>
     console.error('Failed to get transaction history:', error);
     // Return empty array instead of throwing to prevent UI crashes
     return [];
+  }
+};
+
+// Admin APIs
+export const getAdminUsers = async () => {
+  try {
+    const response = await api.get('/admin/users');
+    return response.data || [];
+  } catch (error: any) {
+    console.error('Failed to load admin users:', error);
+    handleApiError(error);
+  }
+};
+
+export const getAdminTransactions = async (startIso: string, endIso: string) => {
+  try {
+    const response = await api.get('/admin/reports/transactions', {
+      params: { startDate: startIso, endDate: endIso },
+    });
+    return response.data || [];
+  } catch (error: any) {
+    console.error('Failed to load admin transactions:', error);
+    handleApiError(error);
+  }
+};
+
+export const blockUser = async (userId: number | string) => {
+  try {
+    await api.post(`/admin/users/${userId}/block`);
+  } catch (error: any) {
+    console.error('Failed to block user:', error);
+    handleApiError(error);
+  }
+};
+
+export const deleteUser = async (userId: number | string) => {
+  try {
+    await api.delete(`/admin/users/${userId}`);
+  } catch (error: any) {
+    console.error('Failed to delete user:', error);
+    handleApiError(error);
+  }
+};
+
+export const getAdminMeters = async () => {
+  try {
+    const response = await api.get('/admin/meters');
+    return response.data || [];
+  } catch (error: any) {
+    console.error('Failed to load admin meters:', error);
+    handleApiError(error);
+  }
+};
+
+export const deleteMeter = async (meterId: number | string) => {
+  try {
+    await api.delete(`/admin/meters/${meterId}`);
+  } catch (error: any) {
+    console.error('Failed to delete meter:', error);
+    handleApiError(error);
+  }
+};
+
+export const approvePasswordReset = async (userId: number | string) => {
+  try {
+    await api.post(`/admin/password-resets/${userId}/approve`);
+  } catch (error: any) {
+    console.error('Failed to approve password reset:', error);
+    handleApiError(error);
+  }
+};
+
+export const requestPasswordReset = async (email: string) => {
+  try {
+    await api.post('/auth/forgot-password', { email });
+  } catch (error: any) {
+    console.error('Failed to request password reset:', error);
+    handleApiError(error);
+  }
+};
+
+export const checkResetStatus = async (email: string) => {
+  try {
+    const response = await api.get('/auth/reset-status', { params: { email } });
+    return Boolean(response.data?.allowed);
+  } catch (error: any) {
+    console.error('Failed to check reset status:', error);
+    handleApiError(error);
+  }
+};
+
+export const resetPassword = async (email: string, newPassword: string) => {
+  try {
+    await api.post('/auth/reset-password', { email, newPassword });
+  } catch (error: any) {
+    console.error('Failed to reset password:', error);
+    handleApiError(error);
+  }
+};
+
+export const changePassword = async (currentPassword: string, newPassword: string) => {
+  try {
+    await api.post('/auth/change-password', { currentPassword, newPassword });
+  } catch (error: any) {
+    console.error('Failed to change password:', error);
+    handleApiError(error);
   }
 };
 

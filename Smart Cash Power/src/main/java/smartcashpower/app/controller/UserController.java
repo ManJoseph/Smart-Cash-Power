@@ -7,6 +7,7 @@ import smartcashpower.app.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -68,6 +69,51 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
         }
     }
+
+    @PutMapping("/profile")
+    public ResponseEntity<UserResponse> updateProfile(@RequestBody UserRegistrationRequest request, Authentication authentication) {
+        String email = authentication.getName();
+        User current = userService.findUserByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Authenticated user not found"));
+        User updated = userService.updateProfile(current.getId(), request.getFullName(), request.getPhoneNumber());
+
+        UserResponse response = new UserResponse();
+        response.setUserId(updated.getId());
+        response.setEmail(updated.getEmail());
+        response.setPhoneNumber(updated.getPhoneNumber());
+        response.setFullName(updated.getFullName());
+        response.setRole(updated.getRole());
+        response.setCreatedAt(updated.getCreatedAt());
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<Void> changePassword(@RequestBody ChangePasswordRequest request, Authentication authentication) {
+        String email = authentication.getName();
+        User current = userService.findUserByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Authenticated user not found"));
+        userService.changePassword(current.getId(), request.getCurrentPassword(), request.getNewPassword());
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Void> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+        userService.requestPasswordReset(request.getEmail());
+        return ResponseEntity.accepted().build();
+    }
+
+    @GetMapping("/reset-status")
+    public ResponseEntity<ResetStatusResponse> getResetStatus(@RequestParam String email) {
+        boolean allowed = userService.isResetWindowOpen(email);
+        return ResponseEntity.ok(new ResetStatusResponse(allowed));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<Void> resetPassword(@RequestBody ResetPasswordRequest request) {
+        userService.resetPasswordWithWindow(request.getEmail(), request.getNewPassword());
+        return ResponseEntity.ok().build();
+    }
     
     // Inner classes for login request/response
     private static class LoginRequest {
@@ -93,5 +139,75 @@ public class UserController {
         public void setToken(String token) { this.token = token; }
         public UserResponse getUser() { return user; }
         public void setUser(UserResponse user) { this.user = user; }
+    }
+
+    public static class ChangePasswordRequest {
+        private String currentPassword;
+        private String newPassword;
+
+        public String getCurrentPassword() {
+            return currentPassword;
+        }
+
+        public void setCurrentPassword(String currentPassword) {
+            this.currentPassword = currentPassword;
+        }
+
+        public String getNewPassword() {
+            return newPassword;
+        }
+
+        public void setNewPassword(String newPassword) {
+            this.newPassword = newPassword;
+        }
+    }
+
+    public static class ForgotPasswordRequest {
+        private String email;
+
+        public String getEmail() {
+            return email;
+        }
+
+        public void setEmail(String email) {
+            this.email = email;
+        }
+    }
+
+    public static class ResetPasswordRequest {
+        private String email;
+        private String newPassword;
+
+        public String getEmail() {
+            return email;
+        }
+
+        public void setEmail(String email) {
+            this.email = email;
+        }
+
+        public String getNewPassword() {
+            return newPassword;
+        }
+
+        public void setNewPassword(String newPassword) {
+            this.newPassword = newPassword;
+        }
+    }
+
+    public static class ResetStatusResponse {
+        private boolean allowed;
+
+        public ResetStatusResponse(boolean allowed) {
+            this.allowed = allowed;
+        }
+
+        public boolean isAllowed() {
+            return allowed;
+        }
+
+        public void setAllowed(boolean allowed) {
+            this.allowed = allowed;
+        }
     }
 }

@@ -2,6 +2,7 @@ package smartcashpower.app.service;
 
 import smartcashpower.app.dto.UserDetailedResponse;
 import smartcashpower.app.model.Admin;
+import smartcashpower.app.model.Meter;
 import smartcashpower.app.model.Transaction;
 import smartcashpower.app.model.User;
 import smartcashpower.app.repository.*;
@@ -49,7 +50,7 @@ public class AdminService {
             dto.setFullName(user.getFullName());
             dto.setPhoneNumber(user.getPhoneNumber());
             dto.setCreatedAt(user.getCreatedAt());
-            dto.setActive(true); // Default to active
+            dto.setActive(user.isActive());
             dto.setMeterCount(meterCount);
             return dto;
         }).collect(Collectors.toList());
@@ -72,13 +73,40 @@ public class AdminService {
                 adminId, action, targetEntity, targetId, LocalDateTime.now()));
     }
 
-    // FR 10: Simulate user suspension and log the action
+    // FR 10: User suspension and log the action
     @Transactional
     public void blockUser(int userId, int adminId) {
         User user = userRepository.findById((long) userId)
                 .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
-        // In a real app, you'd add an isActive field to User and set it to false
+        user.setActive(false);
+        userRepository.save(user);
         logAdminAction(adminId, "Blocked User", "User", String.valueOf(userId));
         System.out.println("User " + userId + " blocked by Admin " + adminId);
+    }
+
+    @Transactional
+    public void deleteUser(int userId, int adminId) {
+        userRepository.deleteById((long) userId);
+        logAdminAction(adminId, "Deleted User", "User", String.valueOf(userId));
+    }
+
+    @Transactional(readOnly = true)
+    public List<Meter> getAllMeters() {
+        return meterRepository.findAll();
+    }
+
+    @Transactional
+    public void deleteMeter(long meterId, int adminId) {
+        meterRepository.deleteById(meterId);
+        logAdminAction(adminId, "Deleted Meter", "Meter", String.valueOf(meterId));
+    }
+
+    @Transactional
+    public void approvePasswordReset(int userId, int adminId) {
+        User user = userRepository.findById((long) userId)
+                .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
+        user.setPasswordResetAllowedUntil(LocalDateTime.now().plusMinutes(5));
+        userRepository.save(user);
+        logAdminAction(adminId, "Approved Password Reset", "User", String.valueOf(userId));
     }
 }

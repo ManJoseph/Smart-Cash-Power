@@ -35,5 +35,14 @@ public class User {
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    @Column(name = "active", nullable = false)
+    private boolean active = true;
+
+    @Column(name = "password_reset_requested_at")
+    private LocalDateTime passwordResetRequestedAt;
+
+    @Column(name = "password_reset_allowed_until")
+    private LocalDateTime passwordResetAllowedUntil;
 }
 
