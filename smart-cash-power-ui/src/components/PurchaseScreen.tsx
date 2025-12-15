@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { initiatePurchase, type TransactionInitiationRequest, type TransactionResponse } from '../services/apiService';
 
 interface PurchaseScreenProps {
@@ -7,14 +8,24 @@ interface PurchaseScreenProps {
 }
 
 const PurchaseScreen: React.FC<PurchaseScreenProps> = ({ meters, onNavigateBack }) => {
-  const [step, setStep] = useState(1);
-  const [selectedMeterId, setSelectedMeterId] = useState<number | null>(null);
+  const location = useLocation();
+  const preselectedMeter = location.state?.meter;
+
+  const [step, setStep] = useState(preselectedMeter ? 2 : 1);
+  const [selectedMeterId, setSelectedMeterId] = useState<number | null>(preselectedMeter?.id || null);
   const [amount, setAmount] = useState('');
   const [provider, setProvider] = useState('MTN MoMo');
   const [pin, setPin] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<TransactionResponse | null>(null);
+
+  useEffect(() => {
+    if (preselectedMeter) {
+      setSelectedMeterId(preselectedMeter.id);
+      setStep(2);
+    }
+  }, [preselectedMeter]);
 
   const handleNextStep = () => {
     if (step === 1 && selectedMeterId) {
@@ -87,7 +98,7 @@ const PurchaseScreen: React.FC<PurchaseScreenProps> = ({ meters, onNavigateBack 
 
       {error && <p className="text-red-500 text-center bg-red-100 p-3 rounded-lg">{error}</p>}
 
-      {step === 1 && (
+      {step === 1 && !preselectedMeter && (
         <div className="space-y-4">
           <h3 className="text-xl font-semibold">Step 1: Select a Meter</h3>
           <select
@@ -107,6 +118,12 @@ const PurchaseScreen: React.FC<PurchaseScreenProps> = ({ meters, onNavigateBack 
       {step === 2 && (
         <div className="space-y-4">
           <h3 className="text-xl font-semibold">Step 2: Enter Details</h3>
+          {preselectedMeter && (
+            <div className="p-3 bg-gray-100 rounded-lg">
+                <p className="text-sm text-gray-600">Buying for Meter:</p>
+                <p className="text-lg font-semibold text-gray-800">{preselectedMeter.meterNumber}</p>
+            </div>
+          )}
           <input
             type="number"
             value={amount}

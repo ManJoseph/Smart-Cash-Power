@@ -5,6 +5,7 @@ import smartcashpower.app.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
@@ -17,4 +18,6 @@ public interface TransactionRepository extends JpaRepository<Transaction, Intege
      * @return a list of transactions belonging to the user, ordered by transaction date descending
      */
     List<Transaction> findByUserOrderByTransactionDateDesc(User user);
+    List<Transaction> findByMeter(smartcashpower.app.model.Meter meter);
+    List<Transaction> findAllByTransactionDateBetween(LocalDateTime startDate, LocalDateTime endDate);
 }

@@ -3,6 +3,7 @@ package smartcashpower.app.repository;
 import smartcashpower.app.model.Meter;
 import smartcashpower.app.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -26,4 +27,7 @@ public interface MeterRepository extends JpaRepository<Meter, Long> {
      * @return a list of meters belonging to the user
      */
     List<Meter> findByUser(User user);
+
+    @Query("SELECT m FROM Meter m JOIN FETCH m.user")
+    List<Meter> findAllWithUser();
 }

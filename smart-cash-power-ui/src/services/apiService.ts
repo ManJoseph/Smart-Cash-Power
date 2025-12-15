@@ -1,37 +1,36 @@
 import axios from 'axios';
 
-// 1. Axios Setup: Create a default Axios instance
 const api = axios.create({
-  baseURL: 'http://localhost:8080/api/v1',
+  baseURL: '/api/v1',
 });
 
-const AUTH_HEADER_STORAGE_KEY = 'scpAuthHeader';
+const AUTH_TOKEN_KEY = 'scp-auth-token';
 
-const buildBasicHeader = (email: string, password: string) => `Basic ${btoa(`${email}:${password}`)}`;
-
-const setAuthHeader = (headerValue: string | null) => {
-  if (headerValue) {
-    api.defaults.headers.common['Authorization'] = headerValue;
-    localStorage.setItem(AUTH_HEADER_STORAGE_KEY, headerValue);
+// 2. setAuthHeader(token)
+const setAuthHeader = (token: string | null) => {
+  if (token) {
+    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    localStorage.setItem(AUTH_TOKEN_KEY, token);
   } else {
     delete api.defaults.headers.common['Authorization'];
-    localStorage.removeItem(AUTH_HEADER_STORAGE_KEY);
+    localStorage.removeItem(AUTH_TOKEN_KEY);
   }
 };
 
-const storedHeader = localStorage.getItem(AUTH_HEADER_STORAGE_KEY);
-if (storedHeader) {
-  setAuthHeader(storedHeader);
+// On initial load, try to load the token from local storage
+const storedToken = localStorage.getItem(AUTH_TOKEN_KEY);
+if (storedToken) {
+  setAuthHeader(storedToken);
 }
 
-// Automatically expire sessions on 401 responses
+// Automatically handle 401 responses
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      // Clear user data and redirect to login
+      setAuthHeader(null);
       localStorage.removeItem('user');
-      localStorage.removeItem(AUTH_HEADER_STORAGE_KEY);
-      delete api.defaults.headers.common['Authorization'];
       if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
         window.location.href = '/login';
       }
@@ -40,18 +39,14 @@ api.interceptors.response.use(
   },
 );
 
-
 // Error handler to provide user-friendly messages
 const handleApiError = (error: any): never => {
   if (error.response) {
-    // Server responded with error status
     const message = error.response.data?.message || error.response.data || 'An error occurred. Please try again.';
     throw new Error(message);
   } else if (error.request) {
-    // Request made but no response
     throw new Error('Unable to connect to server. Please check your connection.');
   } else {
-    // Something else happened
     throw new Error('An unexpected error occurred. Please try again.');
   }
 };
@@ -72,7 +67,6 @@ export interface LoginResponse {
 export const registerUser = async (registrationData: any) => {
   try {
     const response = await api.post('/auth/register', registrationData);
-    // Return in the format expected by frontend
     return {
       user: {
         userId: response.data.userId,
@@ -93,11 +87,14 @@ export const registerUser = async (registrationData: any) => {
 export const loginUser = async (loginData: { email: string; password: string }): Promise<LoginResponse> => {
   try {
     const response = await api.post<LoginResponse>('/auth/login', loginData);
-    const basicHeader = buildBasicHeader(loginData.email, loginData.password);
-    setAuthHeader(basicHeader);
-    if (response.data.user) {
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+    const { token, user } = response.data;
+    
+    setAuthHeader(token);
+    
+    if (user) {
+      localStorage.setItem('user', JSON.stringify(user));
     }
+    
     return response.data;
   } catch (error: any) {
     console.error('Login failed:', error);
@@ -109,6 +106,10 @@ export const loginUser = async (loginData: { email: string; password: string }):
 export const logoutUser = () => {
   setAuthHeader(null);
   localStorage.removeItem('user');
+  // Redirect to login page to ensure clean state
+  if (typeof window !== 'undefined') {
+    window.location.href = '/login';
+  }
 };
 
 // Function to get user from local storage
@@ -125,7 +126,6 @@ export const getUserMeters = async () => {
     return response.data || [];
   } catch (error: any) {
     console.error('Failed to get user meters:', error);
-    // Return empty array instead of throwing to prevent UI crashes
     return [];
   }
 };
@@ -142,7 +142,7 @@ export const addMeter = async (meterData: { meterNumber: string }) => {
 };
 
 // 8. initiatePurchase(request)
-export const initiatePurchase = async (request: TransactionInitiationRequest): Promise<TransactionResponse> => {
+export const initiatePurchase = async (request: any): Promise<any> => {
   try {
     const response = await api.post('/transactions/purchase', request);
     return response.data;
@@ -153,13 +153,12 @@ export const initiatePurchase = async (request: TransactionInitiationRequest): P
 };
 
 // 9. getTransactionHistory()
-export const getTransactionHistory = async (): Promise<TransactionResponse[]> => {
+export const getTransactionHistory = async (): Promise<any[]> => {
   try {
     const response = await api.get('/transactions/history');
     return response.data || [];
   } catch (error: any) {
     console.error('Failed to get transaction history:', error);
-    // Return empty array instead of throwing to prevent UI crashes
     return [];
   }
 };
@@ -196,6 +195,15 @@ export const blockUser = async (userId: number | string) => {
   }
 };
 
+export const unblockUser = async (userId: number | string) => {
+  try {
+    await api.post(`/admin/users/${userId}/unblock`);
+  } catch (error: any) {
+    console.error('Failed to unblock user:', error);
+    handleApiError(error);
+  }
+};
+
 export const deleteUser = async (userId: number | string) => {
   try {
     await api.delete(`/admin/users/${userId}`);
@@ -224,11 +232,30 @@ export const deleteMeter = async (meterId: number | string) => {
   }
 };
 
+export const deleteOwnedMeter = async (meterId: number | string) => {
+  try {
+    await api.delete(`/meters/${meterId}`);
+  } catch (error: any) {
+    console.error('Failed to delete meter:', error);
+    handleApiError(error);
+  }
+};
+
 export const approvePasswordReset = async (userId: number | string) => {
   try {
     await api.post(`/admin/password-resets/${userId}/approve`);
   } catch (error: any) {
     console.error('Failed to approve password reset:', error);
+    handleApiError(error);
+  }
+};
+
+export const getPendingResets = async () => {
+  try {
+    const response = await api.get('/admin/password-resets');
+    return response.data || [];
+  } catch (error: any) {
+    console.error('Failed to get pending resets:', error);
     handleApiError(error);
   }
 };
@@ -266,6 +293,25 @@ export const changePassword = async (currentPassword: string, newPassword: strin
     await api.post('/auth/change-password', { currentPassword, newPassword });
   } catch (error: any) {
     console.error('Failed to change password:', error);
+    handleApiError(error);
+  }
+};
+
+export const updateUserProfile = async (data: { fullName: string, phoneNumber: string }) => {
+  try {
+    const response = await api.put('/auth/profile', data);
+    return response.data;
+  } catch (error) {
+    console.error('Failed to update profile:', error);
+    handleApiError(error);
+  }
+};
+
+export const updateMeterUnits = async (meterId: number | string, data: { currentUnits: number; usedUnits: number }) => {
+  try {
+    await api.put(`/meters/${meterId}/units`, data);
+  } catch (error: any) {
+    console.error(`Failed to update units for meter ${meterId}:`, error);
     handleApiError(error);
   }
 };

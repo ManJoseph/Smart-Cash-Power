@@ -4,6 +4,7 @@ import smartcashpower.app.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -33,4 +34,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * @return an Optional containing the user if found, or an empty Optional if not
      */
     Optional<User> findByEmailOrPhoneNumber(String email, String phoneNumber);
+
+    List<User> findByPasswordResetRequestedAtIsNotNullAndPasswordResetAllowedUntilIsNull();
 }

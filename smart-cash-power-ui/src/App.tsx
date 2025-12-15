@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import './index.css';
 import { Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import {
@@ -7,6 +7,7 @@ import {
   blockUser,
   changePassword,
   deleteMeter,
+  deleteOwnedMeter,
   deleteUser,
   getAdminMeters,
   getAdminTransactions,
@@ -19,9 +20,12 @@ import {
   requestPasswordReset,
   checkResetStatus,
   resetPassword,
+  updateMeterUnits,
+  updateUserProfile,
 } from './services/apiService';
 import PurchaseScreen from './components/PurchaseScreen';
 import HistoryScreen from './components/HistoryScreen';
+import ConfirmationModal from './components/ConfirmationModal';
 import type { ReactElement } from 'react';
 
 type UserRole = 'ADMIN' | 'USER' | string;
@@ -53,21 +57,27 @@ const App = () => {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [meters, setMeters] = useState<Meter[]>([]);
+  const [drainingMeters, setDrainingMeters] = useState<Meter[]>([]);
   const [isLoadingMeters, setIsLoadingMeters] = useState(false);
+  const [zeroedMeters, setZeroedMeters] = useState(new Set<string | number>());
 
   const fetchMeters = useCallback(
     async (userOverride?: AuthUser | null) => {
       const user = userOverride ?? currentUser;
       if (!user || user.role === 'ADMIN') {
         setMeters([]);
+        setDrainingMeters([]);
         return;
       }
       setIsLoadingMeters(true);
       try {
         const userMeters = await getUserMeters();
         setMeters(userMeters);
+        setDrainingMeters(userMeters); // Initialize both states
       } catch (error) {
         console.error('Failed to fetch meters', error);
+        setMeters([]);
+        setDrainingMeters([]);
       } finally {
         setIsLoadingMeters(false);
       }
@@ -84,15 +94,70 @@ const App = () => {
   }, []);
 
   useEffect(() => {
-    if (currentUser && currentUser.role !== 'ADMIN') {
+    if (currentUser && currentUser.role === 'USER') {
       fetchMeters(currentUser);
+    } else {
+      setMeters([]);
+      setDrainingMeters([]);
     }
   }, [currentUser, fetchMeters]);
 
-  const handleLogout = () => {
+  // Global draining effect
+  useEffect(() => {
+    if (currentUser?.role !== 'USER' || drainingMeters.length === 0) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setDrainingMeters((prev) =>
+        prev.map((m) => {
+          if (m.currentUnits === 0) return m; // Already zero, do nothing
+
+          const newUnits = Math.max(0, (m.currentUnits ?? 0) - 0.002);
+          
+          if (newUnits === 0 && m.id && !zeroedMeters.has(m.id)) {
+            const totalUsed = (m.usedUnits ?? 0) + (m.currentUnits ?? 0);
+            updateMeterUnits(m.id, { currentUnits: 0, usedUnits: totalUsed });
+            setZeroedMeters((prevSet) => new Set(prevSet).add(m.id!));
+          }
+
+          return {
+            ...m,
+            currentUnits: newUnits,
+            usedUnits: (m.usedUnits ?? 0) + 0.002,
+          };
+        }),
+      );
+    }, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [currentUser, drainingMeters, zeroedMeters]);
+
+  const handleLogout = async () => {
+    // Persist the current state of draining meters before logging out
+    if (drainingMeters.length > 0) {
+      console.log('Saving meter states before logout...');
+      const updatePromises = drainingMeters.map(meter => {
+        if (meter.id) {
+          return updateMeterUnits(meter.id, {
+            currentUnits: meter.currentUnits ?? 0,
+            usedUnits: meter.usedUnits ?? 0,
+          });
+        }
+        return Promise.resolve(); // Should not happen if meters are loaded correctly
+      });
+
+      await Promise.allSettled(updatePromises);
+      console.log('Finished saving meter states.');
+    }
+
+    // Proceed with original logout logic
     logoutUser();
     setCurrentUser(null);
     setMeters([]);
+    setDrainingMeters([]);
     navigate('/', { replace: true });
   };
 
@@ -140,9 +205,9 @@ const App = () => {
                 <DashboardScreen
                   currentUser={currentUser as AuthUser}
                   handleLogout={handleLogout}
-                  meters={meters}
+                  meters={drainingMeters} // Pass draining meters to dashboard
                   isLoadingMeters={isLoadingMeters}
-                  onNavigateToPurchase={() => navigate('/dashboard/purchase')}
+                  onNavigateToPurchase={(meter) => navigate('/dashboard/purchase', { state: { meter } })}
                   onNavigateToHistory={() => navigate('/dashboard/history')}
                   onRefreshMeters={() => fetchMeters(currentUser)}
                 />
@@ -155,7 +220,7 @@ const App = () => {
               <ProtectedRoute currentUser={currentUser} allowedRoles={['USER']}>
                 <div className="w-full max-w-2xl mx-auto bg-white shadow-lg rounded-2xl p-6">
                   <PurchaseScreen
-                    meters={meters}
+                    meters={meters} // Pass canonical meters to purchase screen
                     onNavigateBack={() => navigate('/dashboard')}
                   />
                 </div>
@@ -184,7 +249,14 @@ const App = () => {
             path="/settings"
             element={
               <ProtectedRoute currentUser={currentUser}>
-                <SettingsScreen currentUser={currentUser as AuthUser} />
+                <SettingsScreen
+                  currentUser={currentUser as AuthUser}
+                  onUpdateSuccess={(updatedUser) => {
+                    const newCurrentUser = { ...currentUser, ...updatedUser };
+                    setCurrentUser(newCurrentUser);
+                    localStorage.setItem('user', JSON.stringify(newCurrentUser));
+                  }}
+                />
               </ProtectedRoute>
             }
           />
@@ -375,10 +447,17 @@ interface DashboardScreenProps {
     handleLogout: () => void;
     meters: Meter[];
     isLoadingMeters: boolean;
-    onNavigateToPurchase: () => void;
+    onNavigateToPurchase: (meter?: Meter) => void;
     onNavigateToHistory: () => void;
     onRefreshMeters: () => void;
 }
+
+import MeterDetailModal from './components/MeterDetailModal';
+import TransactionDetailModal from './components/MeterDetailModal';
+
+// ... (rest of the imports)
+
+// ... (App component and other components)
 
 const DashboardScreen = ({ currentUser, handleLogout, meters, isLoadingMeters, onNavigateToPurchase, onNavigateToHistory, onRefreshMeters }: DashboardScreenProps) => {
   const [showAddMeter, setShowAddMeter] = useState(false);
@@ -386,27 +465,19 @@ const DashboardScreen = ({ currentUser, handleLogout, meters, isLoadingMeters, o
   const [isAddingMeter, setIsAddingMeter] = useState(false);
   const [addMeterError, setAddMeterError] = useState<string | null>(null);
   const [addMeterSuccess, setAddMeterSuccess] = useState(false);
-  const [metersList, setMetersList] = useState<Meter[]>(meters);
   const [selectedMeter, setSelectedMeter] = useState<Meter | null>(null);
+  const [meterSearch, setMeterSearch] = useState('');
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{
+    isOpen: boolean;
+    meter: Meter | null;
+  }>({ isOpen: false, meter: null });
 
-  useEffect(() => {
-    setMetersList(meters);
-  }, [meters]);
-
-  useEffect(() => {
-    const intervalId = window.setInterval(() => {
-      setMetersList((prev) =>
-        prev.map((m) => ({
-          ...m,
-          currentUnits: Math.max(0, (m.currentUnits ?? 0) - 0.0002),
-          usedUnits: (m.usedUnits ?? 0) + 0.0002,
-        })),
-      );
-    }, 1000);
-    return () => {
-      window.clearInterval(intervalId);
-    };
-  }, []);
+  const filteredMeters = useMemo(() => {
+    if (!meterSearch) return meters;
+    return meters.filter(meter =>
+      meter.meterNumber.toLowerCase().includes(meterSearch.toLowerCase())
+    );
+  }, [meters, meterSearch]);
 
   const handleAddMeter = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -438,6 +509,33 @@ const DashboardScreen = ({ currentUser, handleLogout, meters, isLoadingMeters, o
     }
   };
 
+  const handlePurchaseRequest = (meter: Meter) => {
+    setSelectedMeter(null); // Close the modal
+    onNavigateToPurchase(meter); // Navigate to purchase screen with the selected meter
+  };
+
+  const handleRequestDeleteMeter = (meter: Meter) => {
+    setSelectedMeter(null); // Close the detail modal
+    setDeleteConfirmation({ isOpen: true, meter: meter });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirmation.meter?.id) return;
+    try {
+      await deleteOwnedMeter(deleteConfirmation.meter.id);
+      setDeleteConfirmation({ isOpen: false, meter: null });
+      onRefreshMeters(); // Refresh the list
+    } catch (error) {
+      console.error("Failed to delete meter:", error);
+      // Optionally, show an error to the user
+      setDeleteConfirmation({ isOpen: false, meter: null });
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteConfirmation({ isOpen: false, meter: null });
+  };
+
   return (
     <div className="space-y-8">
       <header className="flex items-center justify-between">
@@ -445,17 +543,25 @@ const DashboardScreen = ({ currentUser, handleLogout, meters, isLoadingMeters, o
           <h2 className="text-3xl font-bold text-gray-800">Dashboard</h2>
           <p className="text-gray-600">Welcome back, {currentUser.fullName || currentUser.name || currentUser.email}!</p>
         </div>
-        <button onClick={handleLogout} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-          Logout
-        </button>
+        <div className="flex items-center gap-4">
+          <Link to="/settings" className="text-gray-500 hover:text-gray-800">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </Link>
+          <button onClick={handleLogout} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+            Logout
+          </button>
+        </div>
       </header>
 
       {/* Add Meter Section */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-xl font-semibold text-gray-800">My Meters</h3>
-          <button 
-            onClick={() => setShowAddMeter(!showAddMeter)} 
+          <button
+            onClick={() => setShowAddMeter(!showAddMeter)}
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
           >
             {showAddMeter ? 'Cancel' : '+ Add Meter'}
@@ -484,14 +590,24 @@ const DashboardScreen = ({ currentUser, handleLogout, meters, isLoadingMeters, o
           </form>
         )}
 
+        <div className="pt-2">
+            <input
+                type="text"
+                placeholder="Search by meter number..."
+                value={meterSearch}
+                onChange={(e) => setMeterSearch(e.target.value)}
+                className="w-full px-4 py-3 text-lg text-gray-700 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+        </div>
+
         {/* Meters List */}
         {isLoadingMeters ? (
           <p className="text-center text-gray-500 py-4">Loading meters...</p>
-        ) : metersList.length > 0 ? (
+        ) : filteredMeters.length > 0 ? (
           <div className="space-y-3">
-            {metersList.map((meter) => (
-              <MeterCard 
-                key={meter.id ?? meter.meterNumber} 
+            {filteredMeters.map((meter) => (
+              <MeterCard
+                key={meter.id ?? meter.meterNumber}
                 meter={meter}
                 onClick={() => setSelectedMeter(meter)}
               />
@@ -500,75 +616,43 @@ const DashboardScreen = ({ currentUser, handleLogout, meters, isLoadingMeters, o
         ) : (
           <div className="text-center py-8 bg-gray-50 rounded-lg">
             <p className="text-gray-500 mb-2">No meters found.</p>
-            <p className="text-sm text-gray-400">Add a meter to get started with purchasing electricity.</p>
+            <p className="text-sm text-gray-400">
+                {meterSearch ? `No meters match your search for "${meterSearch}".` : 'Add a meter to get started.'}
+            </p>
           </div>
         )}
       </div>
 
       {/* Action Buttons */}
       <div className="space-y-4 text-center">
-        <button 
-          onClick={onNavigateToPurchase} 
-          disabled={metersList.length === 0}
+        <button
+          onClick={() => onNavigateToPurchase()}
+          disabled={meters.length === 0}
           className="w-full px-6 py-4 font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
           Buy Electricity
         </button>
-        <button 
-          onClick={onNavigateToHistory} 
+        <button
+          onClick={onNavigateToHistory}
           className="w-full px-6 py-3 font-semibold text-blue-600 bg-transparent border-2 border-blue-600 rounded-lg hover:bg-blue-50"
         >
           View History
         </button>
       </div>
-      {selectedMeter && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="w-full max-w-lg bg-white rounded-3xl shadow-lg p-8 space-y-4">
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">Meter details</h3>
-            <p className="text-sm text-gray-500 mb-4">
-              Detailed information for meter <span className="font-semibold">{selectedMeter.meterNumber}</span>
-            </p>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-gray-500">Meter ID</p>
-                <p className="font-semibold text-gray-900">{selectedMeter.id ?? 'N/A'}</p>
-              </div>
-              <div>
-                <p className="text-gray-500">Current units</p>
-                <p className="font-semibold text-gray-900">
-                  {selectedMeter.currentUnits !== undefined ? `${selectedMeter.currentUnits.toFixed(3)} kWh` : 'N/A'}
-                </p>
-              </div>
-              <div>
-                <p className="text-gray-500">Used units</p>
-                <p className="font-semibold text-gray-900">
-                  {selectedMeter.usedUnits !== undefined ? `${selectedMeter.usedUnits.toFixed(3)} kWh` : 'N/A'}
-                </p>
-              </div>
-              <div>
-                <p className="text-gray-500">Status</p>
-                <p className="font-semibold text-gray-900">{selectedMeter.active === false ? 'Inactive' : 'Active'}</p>
-              </div>
-            </div>
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setSelectedMeter(null)}
-                className="px-4 py-2 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:bg-gray-50"
-              >
-                Close
-              </button>
-              <button
-                type="button"
-                onClick={onNavigateToPurchase}
-                className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700"
-              >
-                Buy for this meter
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <MeterDetailModal
+        meter={selectedMeter}
+        onClose={() => setSelectedMeter(null)}
+        onPurchase={handlePurchaseRequest}
+        onDelete={handleRequestDeleteMeter}
+      />
+      <ConfirmationModal
+        isOpen={deleteConfirmation.isOpen}
+        title="Delete Meter"
+        message={`Are you sure you want to delete meter ${deleteConfirmation.meter?.meterNumber}? This action cannot be undone.`}
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
+        confirmText="Delete"
+      />
     </div>
   );
 };
@@ -598,9 +682,11 @@ const MeterCard = ({ meter, onClick }: { meter: Meter; onClick: () => void }) =>
 
 interface SettingsScreenProps {
   currentUser: AuthUser;
+  onUpdateSuccess: (user: AuthUser) => void;
 }
 
-const SettingsScreen = ({ currentUser }: SettingsScreenProps) => {
+const SettingsScreen = ({ currentUser, onUpdateSuccess }: SettingsScreenProps) => {
+  const navigate = useNavigate();
   const [fullName, setFullName] = useState(currentUser.fullName ?? '');
   const [phoneNumber, setPhoneNumber] = useState(currentUser.phoneNumber ?? '');
   const [currentPassword, setCurrentPassword] = useState('');
@@ -620,17 +706,34 @@ const SettingsScreen = ({ currentUser }: SettingsScreenProps) => {
     }
     setIsSaving(true);
     try {
+      let updated = false;
+      // Update profile info if it has changed
+      if (fullName !== currentUser.fullName || phoneNumber !== currentUser.phoneNumber) {
+        const updatedUser = await updateUserProfile({ fullName, phoneNumber });
+        onUpdateSuccess(updatedUser); // Update parent state
+        updated = true;
+      }
+
+      // Change password if fields are filled
       if (currentPassword && newPassword) {
         await changePassword(currentPassword, newPassword);
+        updated = true;
       }
-      // Profile update could be added here if backend exposes profile update DTO via apiService.
-      setMessage('Settings saved successfully.');
+      
+      if(updated) {
+        setMessage('Settings saved successfully.');
+      } else {
+        setMessage(null);
+      }
+      
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
+
     } catch (e) {
       console.error(e);
-      setError('Failed to save settings.');
+      const errorMessage = e instanceof Error ? e.message : 'Failed to save settings.';
+      setError(errorMessage);
     } finally {
       setIsSaving(false);
     }
@@ -693,13 +796,22 @@ const SettingsScreen = ({ currentUser }: SettingsScreenProps) => {
         </div>
         {error && <p className="text-sm text-red-600 text-center">{error}</p>}
         {message && <p className="text-sm text-green-600 text-center">{message}</p>}
-        <button
-          type="submit"
-          disabled={isSaving}
-          className="w-full px-4 py-3 font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
-        >
-          {isSaving ? 'Saving...' : 'Save changes'}
-        </button>
+        <div className="flex flex-col gap-3 pt-4">
+          <button
+            type="submit"
+            disabled={isSaving}
+            className="w-full px-4 py-3 font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+          >
+            {isSaving ? 'Saving...' : 'Save changes'}
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate(-1)} // Go back to the previous page
+            className="w-full px-4 py-3 font-semibold text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300"
+          >
+            Back
+          </button>
+        </div>
       </form>
     </div>
   );
@@ -850,46 +962,170 @@ interface AdminDashboardProps {
   onLogout: () => void;
 }
 
+// ... imports
+import {
+  // ... other imports
+  getPendingResets,
+  unblockUser,
+  // ... other imports
+} from './services/apiService';
+// ...
+
 const AdminDashboard = ({ currentUser, onLogout }: AdminDashboardProps) => {
   const [users, setUsers] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [allMeters, setAllMeters] = useState<any[]>([]);
+  const [pendingResets, setPendingResets] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const [usersData, txData] = await Promise.all([
-          getAdminUsers(),
-          // Last 7 days for the analytics snapshot
-          getAdminTransactions(
-            new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-            new Date().toISOString(),
-          ),
-        ]);
-        setUsers(usersData ?? []);
-        setTransactions(txData ?? []);
-      } catch (e) {
-        console.error(e);
-        setError('Failed to load admin data.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // Search states
+  const [userSearch, setUserSearch] = useState('');
+  const [meterSearch, setMeterSearch] = useState('');
+  const [transactionSearch, setTransactionSearch] = useState('');
 
-    loadData();
+  // State for modals
+  const [deleteConfirmationProps, setDeleteConfirmationProps] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+  const [statusConfirmationProps, setStatusConfirmationProps] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {}, confirmText: 'Confirm' });
+  const [selectedTransaction, setSelectedTransaction] = useState<any | null>(null);
+
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const [usersData, txData, resetsData, metersData] = await Promise.all([
+        getAdminUsers(),
+        getAdminTransactions(new Date(0).toISOString(), new Date().toISOString()),
+        getPendingResets(),
+        getAdminMeters(),
+      ]);
+      setUsers(usersData ?? []);
+      setTransactions(txData ?? []);
+      setPendingResets(resetsData ?? []);
+      setAllMeters(metersData ?? []);
+    } catch (e) {
+      console.error(e);
+      setError('Failed to load admin data.');
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
-  const activeUsers = users.length;
-  const metersMonitored = users.reduce((sum, u) => sum + (u.meterCount ?? 0), 0);
-  const pendingTickets = transactions.filter((t) => t.currentStatus && t.currentStatus !== 'SUCCESS' && t.currentStatus !== 'COMPLETED').length;
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+  
+  // Memoized filtering
+  const filteredUsers = useMemo(() => {
+    if (!userSearch) return users;
+    return users.filter(u =>
+      u.fullName?.toLowerCase().includes(userSearch.toLowerCase()) ||
+      u.email?.toLowerCase().includes(userSearch.toLowerCase())
+    );
+  }, [users, userSearch]);
 
+  const filteredMeters = useMemo(() => {
+    if (!meterSearch) return allMeters;
+    return allMeters.filter(m =>
+      m.meterNumber?.toLowerCase().includes(meterSearch.toLowerCase()) ||
+      m.ownerFullName?.toLowerCase().includes(meterSearch.toLowerCase())
+    );
+  }, [allMeters, meterSearch]);
+
+  const filteredTransactions = useMemo(() => {
+    if (!transactionSearch) return transactions;
+    return transactions.filter(tx =>
+      tx.meterNumber?.toLowerCase().includes(transactionSearch.toLowerCase()) ||
+      tx.userFullName?.toLowerCase().includes(transactionSearch.toLowerCase())
+    );
+  }, [transactions, transactionSearch]);
+
+  const activeUsers = users.length;
+  const metersMonitored = allMeters.length;
+  // ... (rest of the handlers are fine)
+  const handleCancelConfirmation = () => {
+    setDeleteConfirmationProps({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+    setStatusConfirmationProps({ isOpen: false, title: '', message: '', onConfirm: () => {}, confirmText: 'Confirm' });
+  };
+  
   const handleBlockUser = async (userId: number | string) => {
     try {
       await blockUser(userId);
-      setUsers((prev) => prev.map((u) => (u.userId === userId ? { ...u, blocked: true } : u)));
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, active: false } : u)));
+      handleCancelConfirmation();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleUnblockUser = async (userId: number | string) => {
+    try {
+      await unblockUser(userId);
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, active: true } : u)));
+      handleCancelConfirmation();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+  
+  const handleDeleteUser = (userId: number | string) => {
+    setDeleteConfirmationProps({
+      isOpen: true,
+      title: 'Delete User',
+      message: 'Are you sure you want to delete this user? This action cannot be undone.',
+      onConfirm: async () => {
+        try {
+          await deleteUser(userId);
+          setUsers((prev) => prev.filter((u) => u.id !== userId));
+          handleCancelConfirmation();
+        } catch (e) {
+          console.error(e);
+        }
+      },
+    });
+  };
+
+  const handleRequestStatusChange = (user: any) => {
+    if (user.active) {
+      setStatusConfirmationProps({
+        isOpen: true,
+        title: 'Change User Status',
+        message: `Are you sure you want to block ${user.fullName || user.email}?`,
+        onConfirm: () => handleBlockUser(user.id),
+        confirmText: 'Block',
+      });
+    } else {
+      setStatusConfirmationProps({
+        isOpen: true,
+        title: 'Change User Status',
+        message: `Are you sure you want to unblock ${user.fullName || user.email}?`,
+        onConfirm: () => handleUnblockUser(user.id),
+        confirmText: 'Unblock',
+      });
+    }
+  };
+
+  const handleDeleteMeter = (meterId: number | string) => {
+    setDeleteConfirmationProps({
+      isOpen: true,
+      title: 'Delete Meter',
+      message: 'Are you sure you want to delete this meter?',
+      onConfirm: async () => {
+        try {
+          await deleteMeter(meterId);
+          setAllMeters((prev) => prev.filter((m) => m.id !== meterId));
+          handleCancelConfirmation();
+        } catch (e) {
+          console.error(e);
+        }
+      },
+    });
+  };
+
+  const handleApproveReset = async (userId: number | string) => {
+    try {
+      await approvePasswordReset(userId);
+      setPendingResets((prev) => prev.filter((r) => r.id !== userId));
     } catch (e) {
       console.error(e);
     }
@@ -897,6 +1133,7 @@ const AdminDashboard = ({ currentUser, onLogout }: AdminDashboardProps) => {
 
   return (
     <div className="space-y-8">
+      {/* ... Header and stats are fine */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-white rounded-3xl p-8 shadow-lg">
         <div>
           <p className="text-sm uppercase tracking-wide text-gray-500">Admin Console</p>
@@ -919,23 +1156,55 @@ const AdminDashboard = ({ currentUser, onLogout }: AdminDashboardProps) => {
         </div>
         <div className="p-6 bg-white rounded-2xl shadow">
           <p className="text-sm text-gray-500">Pending tickets</p>
-          <p className="text-3xl font-bold mt-2 text-gray-900">{pendingTickets}</p>
+          <p className="text-3xl font-bold mt-2 text-gray-900">{transactions.filter((t) => t.status && t.status !== 'SUCCESS' && t.status !== 'COMPLETED').length}</p>
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl p-8 shadow space-y-6">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xl font-semibold text-gray-900">Customer management</h3>
-          <Link to="/dashboard" className="text-sm font-semibold text-blue-600 hover:underline">
-            View client workspace
-          </Link>
-        </div>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        {isLoading ? (
-          <p className="text-sm text-gray-500">Loading admin data...</p>
-        ) : (
+      {error && ( <div className="p-6 bg-red-50 text-red-700 rounded-2xl shadow"> <p className="font-bold">Failed to load admin data</p> <p>Please ensure you are logged in as an Administrator and have a valid network connection.</p> </div> )}
+
+      {/* ... Password Reset Requests are fine */}
+       <div className="bg-white rounded-3xl p-8 shadow space-y-4">
+        <h3 className="text-xl font-semibold text-gray-900">Password Reset Requests</h3>
+        {isLoading ? <p>Loading...</p> : pendingResets.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  <th className="py-2 pr-4 font-semibold text-gray-600">User</th>
+                  <th className="py-2 pr-4 font-semibold text-gray-600">Email</th>
+                  <th className="py-2 pr-4 font-semibold text-gray-600">Requested At</th>
+                  <th className="py-2 pr-4 font-semibold text-gray-600 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendingResets.map((r) => (
+                  <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50">
+                    <td className="py-2 pr-4">{r.fullName || '—'}</td>
+                    <td className="py-2 pr-4">{r.email}</td>
+                    <td className="py-2 pr-4">{new Date(r.createdAt).toLocaleString()}</td>
+                    <td className="py-2 pr-4 text-right">
+                      <button onClick={() => handleApproveReset(r.id)} className="text-sm font-semibold text-green-600 hover:underline" > Approve </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500">No pending password reset requests.</p>
+        )}
+      </div>
+
+      {/* Customer Management */}
+      <div className="bg-white rounded-3xl p-8 shadow space-y-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-semibold text-gray-900">Customer Management</h3>
+        </div>
+        <input type="text" placeholder="Search users by name or email..." value={userSearch} onChange={(e) => setUserSearch(e.target.value)} className="w-full px-4 py-2 border rounded-md" />
+        {isLoading ? <p>Loading...</p> : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-left text-sm">
+              {/* ... table head */}
               <thead>
                 <tr className="border-b border-gray-100">
                   <th className="py-2 pr-4 font-semibold text-gray-600">User</th>
@@ -946,72 +1215,91 @@ const AdminDashboard = ({ currentUser, onLogout }: AdminDashboardProps) => {
                 </tr>
               </thead>
               <tbody>
-                {users.map((u) => (
-                  <tr key={u.userId} className="border-b border-gray-50 hover:bg-gray-50">
+                {filteredUsers.map((u) => (
+                  <tr key={u.id} className="border-b border-gray-50 hover:bg-gray-50">
                     <td className="py-2 pr-4">{u.fullName || '—'}</td>
                     <td className="py-2 pr-4">{u.email}</td>
                     <td className="py-2 pr-4">{u.meterCount ?? 0}</td>
-                    <td className="py-2 pr-4">{u.blocked ? 'Blocked' : 'Active'}</td>
-                    <td className="py-2 pr-4 text-right">
-                      {!u.blocked && (
-                        <button
-                          onClick={() => handleBlockUser(u.userId)}
-                          className="text-sm font-semibold text-red-600 hover:underline"
-                        >
-                          Block
-                        </button>
-                      )}
+                    <td className="py-2 pr-4">
+                      <button onClick={() => handleRequestStatusChange(u)} className={`px-2 py-1 text-xs font-semibold rounded-full ${ u.active ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700' }`} >
+                        {u.active ? 'Active' : 'Blocked'}
+                      </button>
+                    </td>
+                    <td className="py-2 pr-4 text-right space-x-4">
+                      <button onClick={() => handleDeleteUser(u.id)} className="text-sm font-semibold text-red-600 hover:underline" > Delete </button>
                     </td>
                   </tr>
                 ))}
-                {users.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="py-4 text-center text-gray-500">
-                      No users found.
-                    </td>
-                  </tr>
-                )}
               </tbody>
             </table>
           </div>
         )}
       </div>
 
+      {/* All Meters */}
       <div className="bg-white rounded-3xl p-8 shadow space-y-4">
-        <h3 className="text-xl font-semibold text-gray-900">Recent transactions</h3>
-        {transactions.length === 0 ? (
-          <p className="text-sm text-gray-500">No transactions in the last 7 days.</p>
-        ) : (
-          <div className="space-y-2 max-h-80 overflow-y-auto">
-            {transactions.map((tx) => (
-              <div key={tx.id} className="flex items-center justify-between border border-gray-100 rounded-2xl p-3">
+        <h3 className="text-xl font-semibold text-gray-900 mb-4">All Registered Meters</h3>
+        <input type="text" placeholder="Search meters by number or owner..." value={meterSearch} onChange={(e) => setMeterSearch(e.target.value)} className="w-full px-4 py-2 border rounded-md" />
+        {isLoading ? <p>Loading...</p> : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-left text-sm">
+              {/* ... table head */}
+              <thead>
+                <tr className="border-b border-gray-100">
+                  <th className="py-2 pr-4 font-semibold text-gray-600">Meter Number</th>
+                  <th className="py-2 pr-4 font-semibold text-gray-600">Owner</th>
+                  <th className="py-2 pr-4 font-semibold text-gray-600">Status</th>
+                  <th className="py-2 pr-4 font-semibold text-gray-600 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredMeters.map((m) => (
+                  <tr key={m.id} className="border-b border-gray-50 hover:bg-gray-50">
+                    <td className="py-2 pr-4">{m.meterNumber}</td>
+                    <td className="py-2 pr-4">{m.ownerFullName || 'N/A'}</td>
+                    <td className="py-2 pr-4">{m.active ? 'Active' : 'Inactive'}</td>
+                    <td className="py-2 pr-4 text-right">
+                      <button onClick={() => handleDeleteMeter(m.id)} className="text-sm font-semibold text-red-600 hover:underline" > Delete </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* All Transactions */}
+      <div className="bg-white rounded-3xl p-8 shadow space-y-4">
+        <h3 className="text-xl font-semibold text-gray-900 mb-4">All Transactions</h3>
+        <input type="text" placeholder="Search transactions by meter or user..." value={transactionSearch} onChange={(e) => setTransactionSearch(e.target.value)} className="w-full px-4 py-2 border rounded-md" />
+        {isLoading ? <p>Loading...</p> : (
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {filteredTransactions.map((tx) => (
+              <button key={tx.transactionId} onClick={() => setSelectedTransaction(tx)} className="w-full text-left flex items-center justify-between border border-gray-100 rounded-2xl p-3 hover:bg-gray-50">
                 <div>
                   <p className="text-sm font-semibold text-gray-800">{tx.meterNumber}</p>
-                  <p className="text-xs text-gray-500">
-                    {tx.transactionDate ? new Date(tx.transactionDate).toLocaleString() : 'N/A'}
-                  </p>
+                  <p className="text-xs text-gray-500"> {tx.transactionDate ? new Date(tx.transactionDate).toLocaleString() : 'N/A'} </p>
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-semibold text-gray-900">{tx.amountPaid} RWF</p>
-                  <p
-                    className={`text-xs font-semibold ${
-                      tx.currentStatus === 'SUCCESS' || tx.currentStatus === 'COMPLETED'
-                        ? 'text-green-600'
-                        : tx.currentStatus === 'FAILED'
-                        ? 'text-red-600'
-                        : 'text-yellow-600'
-                    }`}
-                  >
-                    {tx.currentStatus || 'PENDING'}
+                  <p className={`text-xs font-semibold ${ tx.status === 'SUCCESS' || tx.status === 'COMPLETED' ? 'text-green-600' : tx.status === 'FAILED' ? 'text-red-600' : 'text-yellow-600' }`} >
+                    {tx.status || 'N/A'}
                   </p>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         )}
       </div>
+      
+      {/* Modals */}
+      <ConfirmationModal isOpen={deleteConfirmationProps.isOpen} title={deleteConfirmationProps.title} message={deleteConfirmationProps.message} onConfirm={deleteConfirmationProps.onConfirm} onCancel={handleCancelConfirmation} confirmText="Delete" />
+      <ConfirmationModal isOpen={statusConfirmationProps.isOpen} title={statusConfirmationProps.title} message={statusConfirmationProps.message} onConfirm={statusConfirmationProps.onConfirm} onCancel={handleCancelConfirmation} confirmText={statusConfirmationProps.confirmText} />
+      <TransactionDetailModal transaction={selectedTransaction} onClose={() => setSelectedTransaction(null)} />
     </div>
   );
 };
+
 
 export default App;

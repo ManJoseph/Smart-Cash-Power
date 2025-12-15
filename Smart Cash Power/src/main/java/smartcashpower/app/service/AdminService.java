@@ -6,46 +6,56 @@ import smartcashpower.app.model.Meter;
 import smartcashpower.app.model.Transaction;
 import smartcashpower.app.model.User;
 import smartcashpower.app.repository.*;
+import smartcashpower.app.exception.ResourceNotFoundException;
+import smartcashpower.app.dto.TransactionDetailDTO;
+import smartcashpower.app.dto.MeterDetailDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
-import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
-// Assuming User and Meter models exist in com.smartcashpower.app.model
-// Assuming User has fields: id, username, email, fullName, phoneNumber, createdAt, isActive
-// Assuming Meter has a relationship to User or a userId field
 
 @Service
 public class AdminService {
 
+    private static final Logger log = LoggerFactory.getLogger(AdminService.class);
     private final UserRepository userRepository;
     private final TransactionRepository transactionRepository;
     private final MeterRepository meterRepository;
     private final AdminRepository adminRepository;
+    private final PaymentRepository paymentRepository;
 
     @Autowired
     public AdminService(UserRepository userRepository,
                         TransactionRepository transactionRepository,
                         MeterRepository meterRepository,
-                        AdminRepository adminRepository) {
+                        AdminRepository adminRepository,
+                        PaymentRepository paymentRepository) {
         this.userRepository = userRepository;
         this.transactionRepository = transactionRepository;
         this.meterRepository = meterRepository;
         this.adminRepository = adminRepository;
+        this.paymentRepository = paymentRepository;
     }
 
-    // FR 10: Get all users with their meter count for admin view
     @Transactional(readOnly = true)
-    public List<UserDetailedResponse> getAllUsersWithMeterCount() {
-        return userRepository.findAll().stream().map(user -> {
-            long meterCount = meterRepository.findByUser(user).size();
+    public List<UserDetailedResponse> getAllUsers() {
+        List<User> users = userRepository.findAll();
+        Map<Long, Long> meterCounts = meterRepository.findAll().stream()
+                .filter(meter -> meter.getUser() != null)
+                .collect(Collectors.groupingBy(meter -> meter.getUser().getId(), Collectors.counting()));
+
+        return users.stream().map(user -> {
+            long meterCount = meterCounts.getOrDefault(user.getId(), 0L);
             UserDetailedResponse dto = new UserDetailedResponse();
             dto.setId(user.getId().intValue());
-            dto.setUsername(user.getEmail()); // Using email as username
+            dto.setUsername(user.getEmail());
             dto.setEmail(user.getEmail());
             dto.setFullName(user.getFullName());
             dto.setPhoneNumber(user.getPhoneNumber());
@@ -56,57 +66,93 @@ public class AdminService {
         }).collect(Collectors.toList());
     }
 
-    // FR 11, 12: Retrieve transactions by date range for reporting
     @Transactional(readOnly = true)
-    public List<Transaction> getTransactionsByDateRange(LocalDateTime startDate, LocalDateTime endDate) {
-        return transactionRepository.findAll().stream()
-                .filter(tx -> tx.getTransactionDate() != null 
-                        && !tx.getTransactionDate().isBefore(startDate) 
-                        && !tx.getTransactionDate().isAfter(endDate))
+    public List<UserDetailedResponse> getPendingPasswordResets() {
+        return userRepository.findByPasswordResetRequestedAtIsNotNullAndPasswordResetAllowedUntilIsNull().stream()
+            .map(user -> {
+                UserDetailedResponse dto = new UserDetailedResponse();
+                dto.setId(user.getId().intValue());
+                dto.setEmail(user.getEmail());
+                dto.setFullName(user.getFullName());
+                dto.setCreatedAt(user.getPasswordResetRequestedAt());
+                return dto;
+            }).collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<TransactionDetailDTO> getTransactionsByDateRange(LocalDateTime startDate, LocalDateTime endDate) {
+        return transactionRepository.findAllByTransactionDateBetween(startDate, endDate)
+                .stream()
+                .map(TransactionDetailDTO::fromTransaction)
                 .collect(Collectors.toList());
     }
 
-    // FR 13: Log administrative actions (simplified - just console log for now)
     public void logAdminAction(int adminId, String action, String targetEntity, String targetId) {
-        // Simplified logging - in production, this would write to an audit log table
-        System.out.println(String.format("Admin Action: Admin %d performed '%s' on %s %s at %s", 
-                adminId, action, targetEntity, targetId, LocalDateTime.now()));
+        log.info("Admin Action: Admin {} performed '{}' on {} {} at {}",
+                adminId, action, targetEntity, targetId, LocalDateTime.now());
     }
 
-    // FR 10: User suspension and log the action
     @Transactional
-    public void blockUser(int userId, int adminId) {
+    public void blockUser(int userId) {
         User user = userRepository.findById((long) userId)
-                .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + userId));
         user.setActive(false);
         userRepository.save(user);
-        logAdminAction(adminId, "Blocked User", "User", String.valueOf(userId));
-        System.out.println("User " + userId + " blocked by Admin " + adminId);
     }
 
     @Transactional
-    public void deleteUser(int userId, int adminId) {
-        userRepository.deleteById((long) userId);
-        logAdminAction(adminId, "Deleted User", "User", String.valueOf(userId));
+    public void unblockUser(int userId) {
+        User user = userRepository.findById((long) userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + userId));
+        user.setActive(true);
+        userRepository.save(user);
+    }
+
+    @Transactional
+    public void deleteUser(Long id) {
+        log.info("Attempting to delete user with ID: {}", id);
+        
+        if (!userRepository.existsById(id)) {
+            throw new ResourceNotFoundException("User not found with id: " + id);
+        }
+        
+        userRepository.deleteById(id);
+        
+        log.info("Successfully deleted user with ID: {}", id);
     }
 
     @Transactional(readOnly = true)
-    public List<Meter> getAllMeters() {
-        return meterRepository.findAll();
+    public List<MeterDetailDTO> getAllMeters() {
+        return meterRepository.findAllWithUser().stream()
+                .map(MeterDetailDTO::fromMeter)
+                .collect(Collectors.toList());
     }
 
     @Transactional
-    public void deleteMeter(long meterId, int adminId) {
-        meterRepository.deleteById(meterId);
-        logAdminAction(adminId, "Deleted Meter", "Meter", String.valueOf(meterId));
+    public void deleteMeter(long meterId) {
+        Meter meter = meterRepository.findById(meterId)
+                .orElseThrow(() -> new ResourceNotFoundException("Meter not found with id: " + meterId));
+
+        // Manually delete associated transactions and payments
+        List<Transaction> transactions = transactionRepository.findByMeter(meter);
+        for (Transaction tx : transactions) {
+            // If there's a payment linked, delete it first.
+            if (tx.getPayment() != null) {
+                paymentRepository.delete(tx.getPayment());
+            }
+        }
+        // Delete all transactions for the meter
+        transactionRepository.deleteAll(transactions);
+
+        // Finally, delete the meter
+        meterRepository.delete(meter);
     }
 
     @Transactional
-    public void approvePasswordReset(int userId, int adminId) {
+    public void approvePasswordReset(int userId) {
         User user = userRepository.findById((long) userId)
-                .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + userId));
         user.setPasswordResetAllowedUntil(LocalDateTime.now().plusMinutes(5));
         userRepository.save(user);
-        logAdminAction(adminId, "Approved Password Reset", "User", String.valueOf(userId));
     }
 }

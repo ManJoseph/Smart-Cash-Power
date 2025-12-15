@@ -42,4 +42,16 @@ public class MeterController {
     public List<Meter> getUserMeters(Authentication authentication) {
         return meterService.getUserMeters(getCurrentUserId(authentication));
     }
+
+    @DeleteMapping("/{meterId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteMeter(@PathVariable Long meterId, Authentication authentication) {
+        meterService.deleteMeter(getCurrentUserId(authentication), meterId);
+    }
+
+    @PutMapping("/{meterId}/units")
+    @ResponseStatus(HttpStatus.OK)
+    public void updateMeterUnits(@PathVariable Long meterId, @RequestBody smartcashpower.app.dto.UpdateUnitsRequest request) {
+        meterService.updateMeterUnits(meterId, request.getCurrentUnits(), request.getUsedUnits());
+    }
 }

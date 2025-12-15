@@ -1,0 +1,131 @@
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.modal-content {
+  background: var(--surface, #fff);
+  padding: var(--spacing-lg, 24px);
+  border-radius: var(--radius-xl, 28px);
+  box-shadow: var(--shadow-lg, 0 8px 16px rgba(0,0,0,0.16));
+  width: 90%;
+  max-width: 500px;
+  animation: slideIn 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--surface-variant, #E0E0E0);
+  padding-bottom: var(--spacing-md, 16px);
+  margin-bottom: var(--spacing-md, 16px);
+}
+
+.modal-header h2 {
+  font-size: var(--font-title-large, 22px);
+  color: var(--on-surface, #1C1B1F);
+  margin: 0;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  cursor: pointer;
+  color: var(--on-surface-variant, #49454F);
+  transition: color 0.2s;
+}
+
+.close-button:hover {
+  color: var(--on-surface, #1C1B1F);
+}
+
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md, 16px);
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--font-body, 16px);
+}
+
+.detail-row strong {
+  color: var(--on-surface-variant, #49454F);
+}
+
+.detail-row span {
+  color: var(--on-surface, #1C1B1F);
+  font-weight: 500;
+}
+
+.status-badge {
+  padding: 4px 12px;
+  border-radius: var(--radius-full, 1000px);
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.status-badge.status-active {
+  background-color: #C8E6C9; /* Example Green */
+  color: #256029;
+}
+
+.status-badge.status-inactive {
+  background-color: #FFCDD2; /* Example Red */
+  color: #C62828;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 15px 20px;
+  border-top: 1px solid #eee;
+}
+
+.purchase-btn, .delete-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.purchase-btn {
+  background-color: #007bff;
+}
+
+.delete-btn {
+  background-color: #dc3545;
+}
+
+
+.purchase-btn:hover {
+  box-shadow: var(--shadow-md, 0 4px 8px rgba(0,0,0,0.14));
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { transform: translateY(-30px) scale(0.98); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
