@@ -1,6 +1,6 @@
 import React from 'react';
+import { Receipt } from 'lucide-react';
 import type { TransactionResponse } from '../services/apiService';
-import './TransactionDetailModal.css';
 
 interface TransactionDetailModalProps {
   transaction: TransactionResponse | null;
@@ -10,49 +10,115 @@ interface TransactionDetailModalProps {
 const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({ transaction, onClose }) => {
   if (!transaction) return null;
 
+  const getStatusColor = (status: string) => {
+    if (status === 'SUCCESS' || status === 'COMPLETED') {
+      return { bg: 'var(--green-glow)', color: 'var(--green-primary)' };
+    } else if (status === 'FAILED') {
+      return { bg: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' };
+    } else {
+      return { bg: 'rgba(234, 179, 8, 0.1)', color: '#eab308' };
+    }
+  };
+
+  const statusColors = getStatusColor(transaction.status || 'PENDING');
+
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-2xl font-bold text-gray-800">Transaction Details</h3>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(4px)' }}
+      onClick={onClose}
+    >
+      <div 
+        className="w-full max-w-2xl p-6 rounded-2xl animate-fade-in"
+        style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'var(--bg-elevated)' }}>
+              <Receipt className="w-6 h-6" style={{ color: 'var(--text-secondary)' }} />
+            </div>
+            <h3 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Transaction Details</h3>
+          </div>
+          <button 
+            onClick={onClose}
+            className="w-10 h-10 rounded-lg flex items-center justify-center transition-all hover:scale-110"
+            style={{ background: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}
+          >
+            ×
+          </button>
         </div>
-        <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-4">
-            <span className="text-sm text-gray-500">Transaction ID</span>
-            <span className="font-semibold col-span-2">{transaction.transactionId || 'N/A'}</span>
+        
+        {/* Body */}
+        <div className="p-6 rounded-xl space-y-4 mb-6" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
+          <div className="grid grid-cols-3 gap-4 items-center">
+            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Transaction ID</span>
+            <span className="font-semibold col-span-2" style={{ color: 'var(--text-primary)' }}>{transaction.transactionId || 'N/A'}</span>
           </div>
-          <div className="grid grid-cols-3 gap-4">
-            <span className="text-sm text-gray-500">Date</span>
-            <span className="font-semibold col-span-2">{transaction.transactionDate ? new Date(transaction.transactionDate).toLocaleString() : 'N/A'}</span>
+          
+          <div className="grid grid-cols-3 gap-4 items-center">
+            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Date</span>
+            <span className="font-semibold col-span-2" style={{ color: 'var(--text-primary)' }}>
+              {transaction.transactionDate ? new Date(transaction.transactionDate).toLocaleString() : 'N/A'}
+            </span>
           </div>
-          <div className="grid grid-cols-3 gap-4">
-            <span className="text-sm text-gray-500">User</span>
-            <span className="font-semibold col-span-2">{transaction.userFullName || 'N/A'}</span>
+          
+          <div className="grid grid-cols-3 gap-4 items-center">
+            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>User</span>
+            <span className="font-semibold col-span-2" style={{ color: 'var(--text-primary)' }}>{transaction.userFullName || 'N/A'}</span>
           </div>
-          <div className="grid grid-cols-3 gap-4">
-            <span className="text-sm text-gray-500">Meter Number</span>
-            <span className="font-semibold col-span-2">{transaction.meterNumber || 'N/A'}</span>
+          
+          <div className="grid grid-cols-3 gap-4 items-center">
+            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Meter Number</span>
+            <span className="font-semibold col-span-2" style={{ color: 'var(--text-primary)' }}>{transaction.meterNumber || 'N/A'}</span>
           </div>
-          <div className="grid grid-cols-3 gap-4">
-            <span className="text-sm text-gray-500">Amount Paid</span>
-            <span className="font-semibold col-span-2">{transaction.amountPaid != null ? `${transaction.amountPaid} RWF` : 'N/A'}</span>
+          
+          <div className="grid grid-cols-3 gap-4 items-center">
+            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Amount Paid</span>
+            <span className="font-bold text-lg col-span-2" style={{ color: 'var(--green-primary)' }}>
+              {transaction.amountPaid != null ? `${transaction.amountPaid} RWF` : 'N/A'}
+            </span>
           </div>
-          <div className="grid grid-cols-3 gap-4">
-            <span className="text-sm text-gray-500">Units Purchased</span>
-            <span className="font-semibold col-span-2">{transaction.unitsPurchased ?? 'N/A'}</span>
+          
+          <div className="grid grid-cols-3 gap-4 items-center">
+            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Units Purchased</span>
+            <span className="font-semibold col-span-2" style={{ color: 'var(--text-primary)' }}>
+              {transaction.unitsPurchased ?? 'N/A'} kWh
+            </span>
           </div>
-           <div className="grid grid-cols-3 gap-4">
-            <span className="text-sm text-gray-500">Status</span>
-            <span className={`font-semibold col-span-2 ${transaction.status === 'SUCCESS' || transaction.status === 'COMPLETED' ? 'text-green-600' : 'text-red-600'}`}>{transaction.status || 'N/A'}</span>
+          
+          <div className="grid grid-cols-3 gap-4 items-center">
+            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Status</span>
+            <span 
+              className="px-3 py-1 rounded-lg text-sm font-semibold inline-block col-span-2"
+              style={{ background: statusColors.bg, color: statusColors.color }}
+            >
+              {transaction.status || 'N/A'}
+            </span>
           </div>
-          <div className="grid grid-cols-3 gap-4">
-            <span className="text-sm text-gray-500">Reference</span>
-            <span className="font-semibold col-span-2">{transaction.transactionReference || 'N/A'}</span>
+          
+          <div className="grid grid-cols-3 gap-4 items-center">
+            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Reference</span>
+            <span className="font-mono text-sm col-span-2" style={{ color: 'var(--text-muted)' }}>
+              {transaction.transactionReference || 'N/A'}
+            </span>
           </div>
         </div>
-        <div className="text-right mt-8">
-          <button onClick={onClose} className="px-5 py-2 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700">Close</button>
+        
+        {/* Footer */}
+        <div className="text-right">
+          <button 
+            onClick={onClose}
+            className="px-6 py-3 rounded-lg font-semibold transition-all"
+            style={{
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border-default)',
+              color: 'var(--text-primary)',
+            }}
+          >
+            Close
+          </button>
         </div>
       </div>
     </div>
