@@ -1,190 +1,405 @@
 # 💡 SmartCashPower
 
-A modern, intelligent electricity management platform that revolutionizes how users purchase and manage prepaid electricity. Built with React, TypeScript, and Vite, SmartCashPower brings a seamless experience to prepaid utility customers and administrators. 🚀
+> **A modern, full-stack electricity management platform revolutionizing prepaid utility services**
 
-Whether you're buying electricity tokens, tracking consumption, or managing multiple meters, SmartCashPower delivers a fast, intuitive, and secure interface for all your power management needs.
+SmartCashPower is an enterprise-grade solution that enables users to purchase electricity tokens, manage multiple meters, and track consumption in real-time. Built with Spring Boot and React, it delivers a seamless experience for both customers and administrators.
+
+[![Java](https://img.shields.io/badge/Java-21-orange.svg)](https://openjdk.java.net/)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.0-brightgreen.svg)](https://spring.io/projects/spring-boot)
+[![React](https://img.shields.io/badge/React-18+-blue.svg)](https://reactjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Latest-blue.svg)](https://www.postgresql.org/)
+
+---
+
+## 🎯 Overview
+
+SmartCashPower is a comprehensive prepaid electricity management system featuring:
+
+- **🔐 Secure Authentication** - JWT-based authentication with role-based access control
+- **⚡ Real-Time Monitoring** - Live meter consumption tracking and visualization
+- **💳 Instant Purchases** - Seamless electricity token purchases with mobile money integration
+- **📊 Admin Dashboard** - Comprehensive management tools for system administrators
+- **🏠 Multi-Meter Support** - Manage multiple electricity meters from a single account
+- **📱 Responsive Design** - Modern, mobile-first UI built with Tailwind CSS
+
+---
+
+## 🏗️ Architecture
+
+### Technology Stack
+
+#### **Backend**
+- **Framework**: Spring Boot 3.2.0
+- **Language**: Java 21
+- **Database**: PostgreSQL
+- **Security**: Spring Security with JWT
+- **ORM**: Spring Data JPA (Hibernate)
+- **Build Tool**: Maven
+
+#### **Frontend**
+- **Framework**: React 18+ with TypeScript
+- **Build Tool**: Vite
+- **Styling**: Tailwind CSS 4.1
+- **Routing**: React Router v6
+- **HTTP Client**: Axios
+- **State Management**: React Hooks
+
+### System Architecture
+
+```
+┌─────────────────┐      ┌──────────────────┐      ┌─────────────────┐
+│   React SPA     │─────▶│  Spring Boot API │─────▶│   PostgreSQL    │
+│  (Port 5173)    │◀─────│   (Port 8080)    │◀─────│    Database     │
+└─────────────────┘      └──────────────────┘      └─────────────────┘
+        │                         │
+        │                         │
+        ▼                         ▼
+┌─────────────────┐      ┌──────────────────┐
+│  Tailwind CSS   │      │  External APIs   │
+│   Components    │      │  (MoMo, REG)     │
+└─────────────────┘      └──────────────────┘
+```
 
 ---
 
 ## ✨ Features
 
-### For Users
-- 🛍️ **Instant Electricity Purchases** – Buy tokens for any registered meter in just three steps
-- 📊 **Usage Analytics** – Track spending history and monitor token deliveries in real-time
-- 🏠 **Multi-Meter Management** – Register and manage multiple meters from one dashboard
-- 💾 **Transaction History** – Keep a complete record of all purchases and consumption
-- 🔒 **Secure Authentication** – Role-based access with secure login and registration
+### 👤 User Features
 
-### For Administrators
-- 👥 **Customer Management** – Monitor active users and meter registrations
-- ✅ **Transaction Oversight** – Review and approve flagged transactions
-- 📋 **Meter Registration Approvals** – Validate customer requests and maintain data integrity
-- 📢 **System Notifications** – Send outage alerts and updates to impacted customers
-- 📈 **Analytics Dashboard** – Track active users, monitored meters, and pending support tickets
+| Feature | Description |
+|---------|-------------|
+| **Account Management** | Secure registration, login, and profile management |
+| **Meter Management** | Add, view, and delete electricity meters |
+| **Token Purchases** | Buy electricity with mobile money integration |
+| **Transaction History** | Complete record of all purchases and consumption |
+| **Real-Time Updates** | Live meter consumption visualization |
+| **Password Recovery** | Admin-approved password reset workflow |
 
----
+### 👨‍💼 Admin Features
 
-## 🎯 Tech Stack
-
-### Frontend
-- **Frontend Framework** – React 18+ with TypeScript
-- **Build Tool** – Vite (lightning-fast builds and HMR)
-- **Styling** – Tailwind CSS for responsive, modern UI
-- **Routing** – React Router v6 for seamless navigation
-- **State Management** – React Hooks (useState, useCallback, useEffect)
-- **API Communication** – Fetch API with custom service layer
-- **Development** – ESLint, TypeScript strict mode
-
-### Backend
-This frontend application works in conjunction with a dedicated backend API service. The backend handles:
-- User authentication and authorization
-- Meter registration and management
-- Transaction processing and history
-- Admin operations and approvals
-- Database persistence and validation
-
-For the complete system, refer to the backend repository.
+| Feature | Description |
+|---------|-------------|
+| **User Management** | View, block, unblock, and delete user accounts |
+| **Meter Oversight** | Monitor and manage all registered meters |
+| **Transaction Reports** | Filter and export transaction data by date range |
+| **Password Approvals** | Review and approve password reset requests |
+| **System Analytics** | Real-time statistics and monitoring dashboard |
+| **Search & Filter** | Advanced search across users, meters, and transactions |
 
 ---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js 16+ and npm/yarn installed
-- Backend API running on `http://localhost:8080`
-- Modern browser with ES6+ support
 
-### Installation
+- **Java 21** or higher
+- **Node.js 16+** and npm/yarn
+- **PostgreSQL** database
+- **Maven** (included via wrapper)
+
+### Backend Setup
 
 1. **Clone the repository**
    ```bash
    git clone https://github.com/ManJoseph/Smart-Cash-Power.git
+   cd "Smart Cash Power"
+   ```
+
+2. **Configure PostgreSQL**
+   
+   Create a database and user:
+   ```sql
+   CREATE DATABASE smartcashpower_db;
+   CREATE USER smartcash_user WITH PASSWORD 'smartcashpower123@#';
+   GRANT ALL PRIVILEGES ON DATABASE smartcashpower_db TO smartcash_user;
+   ```
+
+3. **Update application.properties** (if needed)
+   ```properties
+   spring.datasource.url=jdbc:postgresql://localhost:5432/smartcashpower_db
+   spring.datasource.username=smartcash_user
+   spring.datasource.password=smartcashpower123@#
+   ```
+
+4. **Run the backend**
+   ```bash
+   ./mvnw spring-boot:run
+   ```
+   
+   Backend will start on `http://localhost:8080`
+
+### Frontend Setup
+
+1. **Navigate to frontend directory**
+   ```bash
    cd smart-cash-power-ui
    ```
 
 2. **Install dependencies**
    ```bash
    npm install
-   # or
-   yarn install
    ```
 
-3. **Configure API endpoints** (if needed)
-   - Update proxy settings in `vite.config.ts` if your backend runs on a different port
-   - Default: `http://localhost:8080/api`
-
-4. **Start the development server**
+3. **Start development server**
    ```bash
    npm run dev
-   # or
-   yarn dev
    ```
-   The app will open at `http://localhost:5173`
+   
+   Frontend will start on `http://localhost:5173`
 
-### Build for Production
+4. **Build for production**
+   ```bash
+   npm run build
+   ```
 
-```bash
-npm run build
-# or
-yarn build
-```
+---
 
-Output will be in the `dist/` directory.
+## 📡 API Documentation
+
+### Authentication Endpoints
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| POST | `/api/v1/auth/register` | Register new user | No |
+| POST | `/api/v1/auth/login` | User login | No |
+| PUT | `/api/v1/auth/profile` | Update profile | Yes |
+| POST | `/api/v1/auth/change-password` | Change password | Yes |
+| POST | `/api/v1/auth/forgot-password` | Request password reset | No |
+| GET | `/api/v1/auth/reset-status` | Check reset approval | No |
+| POST | `/api/v1/auth/reset-password` | Complete password reset | No |
+
+### Meter Endpoints
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/api/v1/meters` | Get user's meters | Yes (USER) |
+| POST | `/api/v1/meters` | Add new meter | Yes (USER) |
+| DELETE | `/api/v1/meters/{id}` | Delete meter | Yes (USER) |
+| PUT | `/api/v1/meters/{id}/units` | Update meter units | Yes (USER) |
+
+### Transaction Endpoints
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| POST | `/api/v1/transactions/purchase` | Initiate purchase | Yes (USER) |
+| GET | `/api/v1/transactions/history` | Get transaction history | Yes (USER) |
+
+### Admin Endpoints
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/api/v1/admin/users` | Get all users | Yes (ADMIN) |
+| POST | `/api/v1/admin/users/{id}/block` | Block user | Yes (ADMIN) |
+| POST | `/api/v1/admin/users/{id}/unblock` | Unblock user | Yes (ADMIN) |
+| DELETE | `/api/v1/admin/users/{id}` | Delete user | Yes (ADMIN) |
+| GET | `/api/v1/admin/meters` | Get all meters | Yes (ADMIN) |
+| DELETE | `/api/v1/admin/meters/{id}` | Delete meter | Yes (ADMIN) |
+| GET | `/api/v1/admin/reports/transactions` | Get transactions by date | Yes (ADMIN) |
+| GET | `/api/v1/admin/password-resets` | Get pending resets | Yes (ADMIN) |
+| POST | `/api/v1/admin/password-resets/{id}/approve` | Approve reset | Yes (ADMIN) |
+
+---
+
+## 🗄️ Database Schema
+
+### Core Tables
+
+**users**
+- `user_id` (PK) - Unique identifier
+- `email` - User email (unique)
+- `password_hash` - BCrypt hashed password
+- `phone_number` - Contact number (unique)
+- `full_name` - User's full name
+- `role` - USER or ADMIN
+- `active` - Account status
+- `created_at` - Registration timestamp
+- `password_reset_requested_at` - Reset request time
+- `password_reset_allowed_until` - Reset window expiry
+
+**meters**
+- `meter_id` (PK) - Unique identifier
+- `meter_number` - Meter identifier (unique)
+- `current_units` - Available electricity units
+- `used_units` - Consumed units
+- `active` - Meter status
+- `user_id` (FK) - Owner reference
+
+**transactions**
+- `transaction_id` (PK) - Unique identifier
+- `user_id` (FK) - User reference
+- `meter_id` (FK) - Meter reference
+- `amount` - Payment amount
+- `units_purchased` - Units bought
+- `transaction_date` - Purchase timestamp
+- `status` - PENDING, SUCCESS, FAILED
+- `transaction_reference` - External reference
+
+---
+
+## 🔐 Security Features
+
+### Authentication & Authorization
+- **JWT Tokens**: Stateless authentication with secure token generation
+- **BCrypt Hashing**: Industry-standard password encryption
+- **Role-Based Access**: USER and ADMIN role separation
+- **Protected Routes**: Frontend and backend route protection
+
+### Security Best Practices
+- CORS configuration for allowed origins
+- Input validation on all endpoints
+- SQL injection prevention via JPA
+- XSS protection in React components
+- Secure password reset workflow
+- Session management with JWT expiry
+
+### Production Recommendations
+- Enable HTTPS/TLS encryption
+- Implement rate limiting
+- Add request logging and monitoring
+- Use environment variables for secrets
+- Enable database connection pooling
+- Implement backup and recovery procedures
 
 ---
 
 ## 📁 Project Structure
 
 ```
-smart-cash-power-ui/
-├── src/
-│   ├── App.tsx              # Main app with routing and state management
-│   ├── index.css            # Global styles with Tailwind directives
-│   ├── services/
-│   │   └── apiService.ts    # API communication layer
-│   ├── components/
-│   │   ├── PurchaseScreen.tsx
-│   │   └── HistoryScreen.tsx
-│   └── main.tsx             # Entry point
-├── vite.config.ts           # Vite configuration with API proxy
-├── tsconfig.json            # TypeScript configuration
-└── package.json
+Smart-Cash-Power/
+├── Smart Cash Power/              # Backend (Spring Boot)
+│   ├── src/main/java/smartcashpower/app/
+│   │   ├── config/               # Security & CORS configuration
+│   │   ├── controller/           # REST API controllers
+│   │   ├── dto/                  # Data Transfer Objects
+│   │   ├── exception/            # Custom exceptions
+│   │   ├── integration/          # External API integrations
+│   │   ├── model/                # JPA entities
+│   │   ├── repository/           # Data access layer
+│   │   └── service/              # Business logic
+│   ├── src/main/resources/
+│   │   └── application.properties
+│   └── pom.xml
+│
+└── smart-cash-power-ui/          # Frontend (React + TypeScript)
+    ├── src/
+    │   ├── components/           # React components
+    │   ├── services/             # API service layer
+    │   ├── App.tsx               # Main application
+    │   └── main.tsx              # Entry point
+    ├── vite.config.ts
+    ├── tailwind.config.js
+    └── package.json
 ```
 
 ---
 
-## 🔐 Security Considerations
+## 🎨 UI/UX Highlights
 
-### Authentication & Storage
-- User sessions are stored securely in browser storage (managed by `apiService`)
-- Sensitive tokens should never be exposed in the UI
-- Always validate user roles on the backend
-
-### API Security Best Practices
-1. **Use HTTPS in production** – Encrypt all data in transit
-2. **Backend Proxy** – Route sensitive API calls through your backend server
-3. **CORS Configuration** – Restrict cross-origin requests appropriately
-4. **Rate Limiting** – Implement rate limits on the backend to prevent abuse
-5. **Input Validation** – Validate all user inputs on both frontend and backend
-
-### Environment Variables
-Create a `.env` file in the root directory for sensitive configuration:
-```env
-VITE_API_BASE_URL=http://localhost:8080/api
-```
-
-⚠️ **Important:** Never commit `.env` files with sensitive data. Use `.env.example` as a template.
+- **Modern Design**: Clean, professional interface with Tailwind CSS
+- **Responsive Layout**: Mobile-first design that works on all devices
+- **Real-Time Updates**: Live meter consumption visualization
+- **Interactive Modals**: Detailed views for meters and transactions
+- **Search & Filter**: Advanced filtering across all data tables
+- **Loading States**: Smooth loading indicators and skeleton screens
+- **Error Handling**: User-friendly error messages and validation
 
 ---
 
-## 🧪 Key Features Deep Dive
-
-### User Dashboard
-- Real-time meter data display
-- One-click access to purchase and history screens
-- Add new meters with instant validation
-- Quick logout functionality
+## 🔄 Key Workflows
 
 ### Purchase Flow
-- Select from registered meters
-- Enter desired units
-- Process payment securely
-- Instant token delivery confirmation
+```
+User → Select Meter → Enter Amount → Choose Provider → Confirm
+  → Backend Processes Payment → Update Meter Units → Return Token
+    → Display Confirmation → Update Dashboard
+```
 
-### Admin Console
-- Real-time statistics (active users, monitored meters, pending tickets)
-- Quick-access action menu for common tasks
-- Customer workspace link for support scenarios
-- Transaction monitoring and approval workflows
+### Password Reset Flow
+```
+User → Request Reset → Admin Reviews → Admin Approves
+  → User Receives Notification → User Resets Password
+    → Confirmation → Redirect to Login
+```
+
+### Meter Draining (Real-Time Simulation)
+```
+Login → Fetch Meters → Start Draining Effect (0.002 kWh/sec)
+  → Update UI Every Second → On Zero: Persist to Backend
+    → On Logout: Save All States
+```
+
+---
+
+## 🧪 Testing
+
+### Backend Testing
+```bash
+./mvnw test
+```
+
+### Frontend Testing
+```bash
+npm run test
+```
 
 ---
 
 ## 🤝 Contributing
 
-We welcome contributions! Please follow these steps:
+We welcome contributions from the community! Here's how you can help:
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+1. **Fork** the repository
+2. **Create** a feature branch (`git checkout -b feature/AmazingFeature`)
+3. **Commit** your changes (`git commit -m 'Add some AmazingFeature'`)
+4. **Push** to the branch (`git push origin feature/AmazingFeature`)
+5. **Open** a Pull Request
+
+### Contribution Guidelines
+- Follow existing code style and conventions
+- Write clear commit messages
+- Add tests for new features
+- Update documentation as needed
+- Ensure all tests pass before submitting
 
 ---
 
-## 📧 Support
+## 📄 License
 
-For issues, questions, or suggestions:
-- Open an issue on GitHub
-- Contact the developer at josephmanizabayo7@gmail.com
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 ---
 
-## 👨‍💼 Original Concept & Design
+## 📧 Contact & Support
 
-**Original idea by:** Joseph Manizabayo
+**Developer**: Joseph Manizabayo  
+**Email**: josephmanizabayo7@gmail.com  
+**GitHub**: [@ManJoseph](https://github.com/ManJoseph)
 
-SmartCashPower was conceived and designed to bring intelligent electricity management to prepaid utility customers worldwide. The vision encompasses both frontend and backend systems working seamlessly to deliver a complete smart utility solution.
+For bug reports and feature requests, please open an issue on GitHub.
+
+---
+
+## 🙏 Acknowledgments
+
+- Spring Boot team for the excellent framework
+- React team for the powerful UI library
+- PostgreSQL community for the robust database
+- All contributors and users of SmartCashPower
+
+---
+
+## 🗺️ Roadmap
+
+- [ ] Mobile application (iOS & Android)
+- [ ] SMS notifications for low balance
+- [ ] Multi-language support
+- [ ] Advanced analytics and reporting
+- [ ] Integration with more payment providers
+- [ ] Automated meter reading via IoT devices
 
 ---
 
 **Built with ❤️ for a smarter energy future**
+
+*SmartCashPower - Empowering communities through intelligent utility management*
