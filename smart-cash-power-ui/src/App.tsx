@@ -1448,6 +1448,7 @@ const AdminDashboard = ({ currentUser, onLogout }: AdminDashboardProps) => {
   const [pendingResets, setPendingResets] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'meters' | 'transactions' | 'resets' | 'settings'>('overview');
 
   // Search states
   const [userSearch, setUserSearch] = useState('');
@@ -1512,7 +1513,8 @@ const AdminDashboard = ({ currentUser, onLogout }: AdminDashboardProps) => {
 
   const activeUsers = users.length;
   const metersMonitored = allMeters.length;
-  // ... (rest of the handlers are fine)
+  const pendingTickets = transactions.filter((t) => t.status && t.status !== 'SUCCESS' && t.status !== 'COMPLETED').length;
+  
   const handleCancelConfirmation = () => {
     setDeleteConfirmationProps({ isOpen: false, title: '', message: '', onConfirm: () => {} });
     setStatusConfirmationProps({ isOpen: false, title: '', message: '', onConfirm: () => {}, confirmText: 'Confirm' });
@@ -1521,20 +1523,24 @@ const AdminDashboard = ({ currentUser, onLogout }: AdminDashboardProps) => {
   const handleBlockUser = async (userId: number | string) => {
     try {
       await blockUser(userId);
+      toast.success('User blocked successfully');
       setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, active: false } : u)));
       handleCancelConfirmation();
     } catch (e) {
       console.error(e);
+      toast.error('Failed to block user');
     }
   };
 
   const handleUnblockUser = async (userId: number | string) => {
     try {
       await unblockUser(userId);
+      toast.success('User unblocked successfully');
       setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, active: true } : u)));
       handleCancelConfirmation();
     } catch (e) {
       console.error(e);
+      toast.error('Failed to unblock user');
     }
   };
   
@@ -1546,6 +1552,7 @@ const AdminDashboard = ({ currentUser, onLogout }: AdminDashboardProps) => {
       onConfirm: async () => {
         try {
           await deleteUser(userId);
+          toast.success('User deleted successfully');
           setUsers((prev) => prev.filter((u) => u.id !== userId));
           handleCancelConfirmation();
         } catch (e) {
@@ -1583,10 +1590,12 @@ const AdminDashboard = ({ currentUser, onLogout }: AdminDashboardProps) => {
       onConfirm: async () => {
         try {
           await deleteMeter(meterId);
+          toast.success('Meter deleted successfully');
           setAllMeters((prev) => prev.filter((m) => m.id !== meterId));
           handleCancelConfirmation();
         } catch (e) {
           console.error(e);
+          toast.error('Failed to delete meter');
         }
       },
     });
@@ -1595,178 +1604,591 @@ const AdminDashboard = ({ currentUser, onLogout }: AdminDashboardProps) => {
   const handleApproveReset = async (userId: number | string) => {
     try {
       await approvePasswordReset(userId);
+      toast.success('Password reset approved');
       setPendingResets((prev) => prev.filter((r) => r.id !== userId));
     } catch (e) {
       console.error(e);
+      toast.error('Failed to approve reset');
     }
   };
 
   return (
-    <div className="space-y-8">
-      {/* ... Header and stats are fine */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-white rounded-3xl p-8 shadow-lg">
-        <div>
-          <p className="text-sm uppercase tracking-wide text-gray-500">Admin Console</p>
-          <h2 className="text-3xl font-bold text-gray-900">Welcome back, {currentUser?.fullName || currentUser?.email}</h2>
-          <p className="text-gray-600 mt-2">Monitor transactions, onboard users, and keep the grid running smoothly.</p>
-        </div>
-        <button onClick={onLogout} className="self-start px-5 py-2 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-700">
-          Logout
-        </button>
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-3">
-        <div className="p-6 bg-white rounded-2xl shadow">
-          <p className="text-sm text-gray-500">Active users</p>
-          <p className="text-3xl font-bold mt-2 text-gray-900">{activeUsers}</p>
-        </div>
-        <div className="p-6 bg-white rounded-2xl shadow">
-          <p className="text-sm text-gray-500">Meters monitored</p>
-          <p className="text-3xl font-bold mt-2 text-gray-900">{metersMonitored}</p>
-        </div>
-        <div className="p-6 bg-white rounded-2xl shadow">
-          <p className="text-sm text-gray-500">Pending tickets</p>
-          <p className="text-3xl font-bold mt-2 text-gray-900">{transactions.filter((t) => t.status && t.status !== 'SUCCESS' && t.status !== 'COMPLETED').length}</p>
-        </div>
-      </div>
-
-      {error && ( <div className="p-6 bg-red-50 text-red-700 rounded-2xl shadow"> <p className="font-bold">Failed to load admin data</p> <p>Please ensure you are logged in as an Administrator and have a valid network connection.</p> </div> )}
-
-      {/* ... Password Reset Requests are fine */}
-       <div className="bg-white rounded-3xl p-8 shadow space-y-4">
-        <h3 className="text-xl font-semibold text-gray-900">Password Reset Requests</h3>
-        {isLoading ? <p>Loading...</p> : pendingResets.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="py-2 pr-4 font-semibold text-gray-600">User</th>
-                  <th className="py-2 pr-4 font-semibold text-gray-600">Email</th>
-                  <th className="py-2 pr-4 font-semibold text-gray-600">Requested At</th>
-                  <th className="py-2 pr-4 font-semibold text-gray-600 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pendingResets.map((r) => (
-                  <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50">
-                    <td className="py-2 pr-4">{r.fullName || '—'}</td>
-                    <td className="py-2 pr-4">{r.email}</td>
-                    <td className="py-2 pr-4">{new Date(r.createdAt).toLocaleString()}</td>
-                    <td className="py-2 pr-4 text-right">
-                      <button onClick={() => handleApproveReset(r.id)} className="text-sm font-semibold text-green-600 hover:underline" > Approve </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+    <div className="min-h-screen flex" style={{ background: 'var(--bg-darkest)' }}>
+      {/* Sidebar */}
+      <div className="w-64 flex-shrink-0 flex flex-col" style={{ background: 'var(--bg-card)', borderRight: '1px solid var(--border-default)' }}>
+        <div className="p-6 flex flex-col h-full">
+          {/* Logo */}
+          <div className="flex items-center gap-2 mb-8">
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--gradient-green)' }}>
+              <Zap className="w-6 h-6 text-white" />
+            </div>
+            <span className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>Admin</span>
           </div>
-        ) : (
-          <p className="text-sm text-gray-500">No pending password reset requests.</p>
-        )}
-      </div>
 
-      {/* Customer Management */}
-      <div className="bg-white rounded-3xl p-8 shadow space-y-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-semibold text-gray-900">Customer Management</h3>
-        </div>
-        <input type="text" placeholder="Search users by name or email..." value={userSearch} onChange={(e) => setUserSearch(e.target.value)} className="w-full px-4 py-2 border rounded-md" />
-        {isLoading ? <p>Loading...</p> : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              {/* ... table head */}
-              <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="py-2 pr-4 font-semibold text-gray-600">User</th>
-                  <th className="py-2 pr-4 font-semibold text-gray-600">Email</th>
-                  <th className="py-2 pr-4 font-semibold text-gray-600">Meters</th>
-                  <th className="py-2 pr-4 font-semibold text-gray-600">Status</th>
-                  <th className="py-2 pr-4 font-semibold text-gray-600 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredUsers.map((u) => (
-                  <tr key={u.id} className="border-b border-gray-50 hover:bg-gray-50">
-                    <td className="py-2 pr-4">{u.fullName || '—'}</td>
-                    <td className="py-2 pr-4">{u.email}</td>
-                    <td className="py-2 pr-4">{u.meterCount ?? 0}</td>
-                    <td className="py-2 pr-4">
-                      <button onClick={() => handleRequestStatusChange(u)} className={`px-2 py-1 text-xs font-semibold rounded-full ${ u.active ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700' }`} >
-                        {u.active ? 'Active' : 'Blocked'}
-                      </button>
-                    </td>
-                    <td className="py-2 pr-4 text-right space-x-4">
-                      <button onClick={() => handleDeleteUser(u.id)} className="text-sm font-semibold text-red-600 hover:underline" > Delete </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          {/* Navigation */}
+          <nav className="space-y-2 flex-1">
+            <button
+              onClick={() => setActiveTab('overview')}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all"
+              style={{
+                background: activeTab === 'overview' ? 'var(--green-glow)' : 'transparent',
+                color: activeTab === 'overview' ? 'var(--green-primary)' : 'var(--text-secondary)',
+              }}
+            >
+              <BarChart3 className="w-5 h-5" />
+              <span className="font-medium">Overview</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('users')}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all"
+              style={{
+                background: activeTab === 'users' ? 'var(--green-glow)' : 'transparent',
+                color: activeTab === 'users' ? 'var(--green-primary)' : 'var(--text-secondary)',
+              }}
+            >
+              <Users className="w-5 h-5" />
+              <span className="font-medium">Users</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('meters')}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all"
+              style={{
+                background: activeTab === 'meters' ? 'var(--green-glow)' : 'transparent',
+                color: activeTab === 'meters' ? 'var(--green-primary)' : 'var(--text-secondary)',
+              }}
+            >
+              <Power className="w-5 h-5" />
+              <span className="font-medium">Meters</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('transactions')}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all"
+              style={{
+                background: activeTab === 'transactions' ? 'var(--green-glow)' : 'transparent',
+                color: activeTab === 'transactions' ? 'var(--green-primary)' : 'var(--text-secondary)',
+              }}
+            >
+              <DollarSign className="w-5 h-5" />
+              <span className="font-medium">Transactions</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('resets')}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all"
+              style={{
+                background: activeTab === 'resets' ? 'var(--green-glow)' : 'transparent',
+                color: activeTab === 'resets' ? 'var(--green-primary)' : 'var(--text-secondary)',
+              }}
+            >
+              <FileText className="w-5 h-5" />
+              <span className="font-medium">Password Resets</span>
+            </button>
+          </nav>
+
+          {/* Logout Button */}
+          <div className="mt-6 pt-6" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+            <button
+              onClick={onLogout}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-semibold transition-all"
+              style={{
+                background: 'linear-gradient(135deg, #dc2626 0%, #ef4444 100%)',
+                color: 'white',
+              }}
+            >
+              <LogOut className="w-5 h-5" />
+              Logout
+            </button>
           </div>
-        )}
+        </div>
       </div>
 
-      {/* All Meters */}
-      <div className="bg-white rounded-3xl p-8 shadow space-y-4">
-        <h3 className="text-xl font-semibold text-gray-900 mb-4">All Registered Meters</h3>
-        <input type="text" placeholder="Search meters by number or owner..." value={meterSearch} onChange={(e) => setMeterSearch(e.target.value)} className="w-full px-4 py-2 border rounded-md" />
-        {isLoading ? <p>Loading...</p> : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              {/* ... table head */}
-              <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="py-2 pr-4 font-semibold text-gray-600">Meter Number</th>
-                  <th className="py-2 pr-4 font-semibold text-gray-600">Owner</th>
-                  <th className="py-2 pr-4 font-semibold text-gray-600">Status</th>
-                  <th className="py-2 pr-4 font-semibold text-gray-600 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredMeters.map((m) => (
-                  <tr key={m.id} className="border-b border-gray-50 hover:bg-gray-50">
-                    <td className="py-2 pr-4">{m.meterNumber}</td>
-                    <td className="py-2 pr-4">{m.ownerFullName || 'N/A'}</td>
-                    <td className="py-2 pr-4">{m.active ? 'Active' : 'Inactive'}</td>
-                    <td className="py-2 pr-4 text-right">
-                      <button onClick={() => handleDeleteMeter(m.id)} className="text-sm font-semibold text-red-600 hover:underline" > Delete </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {/* Main Content */}
+      <div className="flex-1 p-8 overflow-y-auto">
+        {/* Header */}
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
+              Welcome back, {currentUser?.fullName || currentUser?.email}
+            </h1>
+            <p style={{ color: 'var(--text-secondary)' }}>
+              Monitor transactions, manage users, and keep the grid running smoothly.
+            </p>
+          </div>
+          
+          {/* Profile Settings Icon */}
+          <button
+            onClick={() => setActiveTab('settings')}
+            className="w-12 h-12 rounded-xl flex items-center justify-center transition-all hover:scale-105"
+            style={{
+              background: activeTab === 'settings' ? 'var(--green-glow)' : 'var(--bg-card)',
+              border: '1px solid var(--border-default)',
+            }}
+          >
+            <SettingsIcon className="w-6 h-6" style={{ color: activeTab === 'settings' ? 'var(--green-primary)' : 'var(--text-secondary)' }} />
+          </button>
+        </div>
+
+        {error && (
+          <div className="mb-6 p-4 rounded-lg" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+            <p className="font-bold" style={{ color: '#ef4444' }}>Failed to load admin data</p>
+            <p style={{ color: '#f87171' }}>Please ensure you are logged in as an Administrator.</p>
           </div>
         )}
-      </div>
 
-      {/* All Transactions */}
-      <div className="bg-white rounded-3xl p-8 shadow space-y-4">
-        <h3 className="text-xl font-semibold text-gray-900 mb-4">All Transactions</h3>
-        <input type="text" placeholder="Search transactions by meter or user..." value={transactionSearch} onChange={(e) => setTransactionSearch(e.target.value)} className="w-full px-4 py-2 border rounded-md" />
-        {isLoading ? <p>Loading...</p> : (
-          <div className="space-y-2 max-h-96 overflow-y-auto">
-            {filteredTransactions.map((tx) => (
-              <button key={tx.transactionId} onClick={() => setSelectedTransaction(tx)} className="w-full text-left flex items-center justify-between border border-gray-100 rounded-2xl p-3 hover:bg-gray-50">
+        {/* Overview Tab */}
+        {activeTab === 'overview' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-4 gap-6">
+              {/* Active Users Card */}
+              <div className="p-6 rounded-2xl transition-all hover:scale-105" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'rgba(34, 197, 94, 0.1)' }}>
+                    <Users className="w-6 h-6" style={{ color: 'var(--green-primary)' }} />
+                  </div>
+                </div>
+                <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Active Users</p>
+                <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>{activeUsers}</p>
+              </div>
+
+              {/* Meters Monitored Card */}
+              <div className="p-6 rounded-2xl transition-all hover:scale-105" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'rgba(59, 130, 246, 0.1)' }}>
+                    <Power className="w-6 h-6" style={{ color: '#3b82f6' }} />
+                  </div>
+                </div>
+                <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Meters Monitored</p>
+                <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>{metersMonitored}</p>
+              </div>
+
+              {/* Pending Tickets Card */}
+              <div className="p-6 rounded-2xl transition-all hover:scale-105" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'rgba(234, 179, 8, 0.1)' }}>
+                    <AlertCircle className="w-6 h-6" style={{ color: '#eab308' }} />
+                  </div>
+                </div>
+                <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Pending Tickets</p>
+                <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>{pendingTickets}</p>
+              </div>
+
+              {/* Password Reset Requests Card */}
+              <div className="p-6 rounded-2xl transition-all hover:scale-105" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'rgba(168, 85, 247, 0.1)' }}>
+                    <FileText className="w-6 h-6" style={{ color: '#a855f7' }} />
+                  </div>
+                </div>
+                <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Password Resets</p>
+                <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>{pendingResets.length}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Users Tab */}
+        {activeTab === 'users' && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 px-4 py-3 rounded-lg" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
+              <Search className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
+              <input
+                type="text"
+                placeholder="Search users by name or email..."
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+                className="flex-1 bg-transparent outline-none"
+                style={{ color: 'var(--text-primary)' }}
+              />
+            </div>
+
+            {isLoading ? (
+              <p style={{ color: 'var(--text-secondary)' }}>Loading...</p>
+            ) : (
+              <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
+                <table className="w-full">
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                      <th className="text-left px-6 py-4 font-semibold" style={{ color: 'var(--text-secondary)' }}>User</th>
+                      <th className="text-left px-6 py-4 font-semibold" style={{ color: 'var(--text-secondary)' }}>Email</th>
+                      <th className="text-left px-6 py-4 font-semibold" style={{ color: 'var(--text-secondary)' }}>Meters</th>
+                      <th className="text-left px-6 py-4 font-semibold" style={{ color: 'var(--text-secondary)' }}>Status</th>
+                      <th className="text-right px-6 py-4 font-semibold" style={{ color: 'var(--text-secondary)' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredUsers.map((u) => (
+                      <tr key={u.id} className="transition-colors" style={{ borderBottom: '1px solid var(--border-subtle)' }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <td className="px-6 py-4" style={{ color: 'var(--text-primary)' }}>{u.fullName || '—'}</td>
+                        <td className="px-6 py-4" style={{ color: 'var(--text-secondary)' }}>{u.email}</td>
+                        <td className="px-6 py-4" style={{ color: 'var(--text-secondary)' }}>{u.meterCount ?? 0}</td>
+                        <td className="px-6 py-4">
+                          <button
+                            onClick={() => handleRequestStatusChange(u)}
+                            className="px-3 py-1 rounded-full text-xs font-semibold"
+                            style={{
+                              background: u.active ? 'rgba(34, 197, 94, 0.1)' : 'rgba(234, 179, 8, 0.1)',
+                              color: u.active ? 'var(--green-primary)' : '#eab308',
+                            }}
+                          >
+                            {u.active ? 'Active' : 'Blocked'}
+                          </button>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <button
+                            onClick={() => handleDeleteUser(u.id)}
+                            className="text-sm font-semibold transition-colors"
+                            style={{ color: '#ef4444' }}
+                            onMouseEnter={(e) => e.currentTarget.style.color = '#f87171'}
+                            onMouseLeave={(e) => e.currentTarget.style.color = '#ef4444'}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Meters Tab */}
+        {activeTab === 'meters' && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 px-4 py-3 rounded-lg" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
+              <Search className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
+              <input
+                type="text"
+                placeholder="Search meters by number or owner..."
+                value={meterSearch}
+                onChange={(e) => setMeterSearch(e.target.value)}
+                className="flex-1 bg-transparent outline-none"
+                style={{ color: 'var(--text-primary)' }}
+              />
+            </div>
+
+            {isLoading ? (
+              <p style={{ color: 'var(--text-secondary)' }}>Loading...</p>
+            ) : (
+              <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
+                <table className="w-full">
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                      <th className="text-left px-6 py-4 font-semibold" style={{ color: 'var(--text-secondary)' }}>Meter Number</th>
+                      <th className="text-left px-6 py-4 font-semibold" style={{ color: 'var(--text-secondary)' }}>Owner</th>
+                      <th className="text-left px-6 py-4 font-semibold" style={{ color: 'var(--text-secondary)' }}>Status</th>
+                      <th className="text-right px-6 py-4 font-semibold" style={{ color: 'var(--text-secondary)' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredMeters.map((m) => (
+                      <tr key={m.id} className="transition-colors" style={{ borderBottom: '1px solid var(--border-subtle)' }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <td className="px-6 py-4" style={{ color: 'var(--text-primary)' }}>{m.meterNumber}</td>
+                        <td className="px-6 py-4" style={{ color: 'var(--text-secondary)' }}>{m.ownerFullName || 'N/A'}</td>
+                        <td className="px-6 py-4" style={{ color: m.active ? 'var(--green-primary)' : 'var(--text-muted)' }}>
+                          {m.active ? 'Active' : 'Inactive'}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <button
+                            onClick={() => handleDeleteMeter(m.id)}
+                            className="text-sm font-semibold transition-colors"
+                            style={{ color: '#ef4444' }}
+                            onMouseEnter={(e) => e.currentTarget.style.color = '#f87171'}
+                            onMouseLeave={(e) => e.currentTarget.style.color = '#ef4444'}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Transactions Tab */}
+        {activeTab === 'transactions' && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 px-4 py-3 rounded-lg" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
+              <Search className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
+              <input
+                type="text"
+                placeholder="Search transactions by meter or user..."
+                value={transactionSearch}
+                onChange={(e) => setTransactionSearch(e.target.value)}
+                className="flex-1 bg-transparent outline-none"
+                style={{ color: 'var(--text-primary)' }}
+              />
+            </div>
+
+            {isLoading ? (
+              <p style={{ color: 'var(--text-secondary)' }}>Loading...</p>
+            ) : (
+              <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                {filteredTransactions.map((tx) => (
+                  <button
+                    key={tx.transactionId}
+                    onClick={() => setSelectedTransaction(tx)}
+                    className="w-full text-left flex items-center justify-between p-4 rounded-xl transition-all"
+                    style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--border-green)';
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--border-default)';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                    }}
+                  >
+                    <div>
+                      <p className="font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>{tx.meterNumber}</p>
+                      <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                        {tx.transactionDate ? new Date(tx.transactionDate).toLocaleString() : 'N/A'}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>{tx.amountPaid} RWF</p>
+                      <p
+                        className="text-sm font-semibold"
+                        style={{
+                          color: tx.status === 'SUCCESS' || tx.status === 'COMPLETED' ? 'var(--green-primary)' :
+                                 tx.status === 'FAILED' ? '#ef4444' : '#eab308'
+                        }}
+                      >
+                        {tx.status || 'N/A'}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Password Resets Tab */}
+        {activeTab === 'resets' && (
+          <div className="space-y-6">
+            {isLoading ? (
+              <p style={{ color: 'var(--text-secondary)' }}>Loading...</p>
+            ) : pendingResets.length > 0 ? (
+              <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
+                <table className="w-full">
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                      <th className="text-left px-6 py-4 font-semibold" style={{ color: 'var(--text-secondary)' }}>User</th>
+                      <th className="text-left px-6 py-4 font-semibold" style={{ color: 'var(--text-secondary)' }}>Email</th>
+                      <th className="text-left px-6 py-4 font-semibold" style={{ color: 'var(--text-secondary)' }}>Requested At</th>
+                      <th className="text-right px-6 py-4 font-semibold" style={{ color: 'var(--text-secondary)' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pendingResets.map((r) => (
+                      <tr key={r.id} className="transition-colors" style={{ borderBottom: '1px solid var(--border-subtle)' }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <td className="px-6 py-4" style={{ color: 'var(--text-primary)' }}>{r.fullName || '—'}</td>
+                        <td className="px-6 py-4" style={{ color: 'var(--text-secondary)' }}>{r.email}</td>
+                        <td className="px-6 py-4" style={{ color: 'var(--text-secondary)' }}>
+                          {new Date(r.createdAt).toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <button
+                            onClick={() => handleApproveReset(r.id)}
+                            className="px-4 py-2 rounded-lg font-semibold text-sm transition-all"
+                            style={{ background: 'var(--gradient-green)', color: 'white' }}
+                          >
+                            Approve
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="p-8 text-center rounded-2xl" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
+                <p style={{ color: 'var(--text-secondary)' }}>No pending password reset requests.</p>
+              </div>
+            )}
+          </div>
+        )}
+        
+        {/* Settings Tab */}
+        {activeTab === 'settings' && (
+          <div className="max-w-2xl">
+            <div className="p-8 rounded-2xl space-y-6" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
+              <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Account Settings</h2>
+              
+              <form className="space-y-5" onSubmit={async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.currentTarget);
+                const fullName = formData.get('fullName') as string;
+                const phoneNumber = formData.get('phoneNumber') as string;
+                const currentPassword = formData.get('currentPassword') as string;
+                const newPassword = formData.get('newPassword') as string;
+                const confirmPassword = formData.get('confirmPassword') as string;
+                
+                try {
+                  if (newPassword && newPassword !== confirmPassword) {
+                    toast.error('New password and confirmation do not match.');
+                    return;
+                  }
+                  
+                  let updated = false;
+                  
+                  if (fullName !== currentUser?.fullName || phoneNumber !== currentUser?.phoneNumber) {
+                    await updateUserProfile({ fullName, phoneNumber });
+                    updated = true;
+                  }
+                  
+                  if (currentPassword && newPassword) {
+                    await changePassword(currentPassword, newPassword);
+                    updated = true;
+                    (e.target as HTMLFormElement).reset();
+                  }
+                  
+                  if (updated) {
+                    toast.success('Settings saved successfully');
+                    loadData();
+                  }
+                } catch (err) {
+                  console.error(err);
+                  toast.error('Failed to save settings');
+                }
+              }}>
                 <div>
-                  <p className="text-sm font-semibold text-gray-800">{tx.meterNumber}</p>
-                  <p className="text-xs text-gray-500"> {tx.transactionDate ? new Date(tx.transactionDate).toLocaleString() : 'N/A'} </p>
+                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Email</label>
+                  <input
+                    type="email"
+                    value={currentUser?.email || ''}
+                    disabled
+                    className="w-full px-4 py-3 rounded-lg"
+                    style={{
+                      background: 'var(--bg-elevated)',
+                      border: '1px solid var(--border-default)',
+                      color: 'var(--text-muted)',
+                    }}
+                  />
                 </div>
-                <div className="text-right">
-                  <p className="text-sm font-semibold text-gray-900">{tx.amountPaid} RWF</p>
-                  <p className={`text-xs font-semibold ${ tx.status === 'SUCCESS' || tx.status === 'COMPLETED' ? 'text-green-600' : tx.status === 'FAILED' ? 'text-red-600' : 'text-yellow-600' }`} >
-                    {tx.status || 'N/A'}
-                  </p>
+                
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Full Name</label>
+                  <input
+                    name="fullName"
+                    type="text"
+                    defaultValue={currentUser?.fullName || ''}
+                    className="w-full px-4 py-3 rounded-lg"
+                    style={{
+                      background: 'var(--bg-elevated)',
+                      border: '1px solid var(--border-default)',
+                      color: 'var(--text-primary)',
+                    }}
+                  />
                 </div>
-              </button>
-            ))}
+                
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Phone Number</label>
+                  <input
+                    name="phoneNumber"
+                    type="tel"
+                    defaultValue={currentUser?.phoneNumber || ''}
+                    className="w-full px-4 py-3 rounded-lg"
+                    style={{
+                      background: 'var(--bg-elevated)',
+                      border: '1px solid var(--border-default)',
+                      color: 'var(--text-primary)',
+                    }}
+                  />
+                </div>
+                
+                <div className="pt-4" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                  <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>Change Password</h3>
+                  
+                  <div className="space-y-4">
+                    <input
+                      name="currentPassword"
+                      type="password"
+                      placeholder="Current password"
+                      className="w-full px-4 py-3 rounded-lg"
+                      style={{
+                        background: 'var(--bg-elevated)',
+                        border: '1px solid var(--border-default)',
+                        color: 'var(--text-primary)',
+                      }}
+                    />
+                    
+                    <input
+                      name="newPassword"
+                      type="password"
+                      placeholder="New password"
+                      className="w-full px-4 py-3 rounded-lg"
+                      style={{
+                        background: 'var(--bg-elevated)',
+                        border: '1px solid var(--border-default)',
+                        color: 'var(--text-primary)',
+                      }}
+                    />
+                    
+                    <input
+                      name="confirmPassword"
+                      type="password"
+                      placeholder="Confirm new password"
+                      className="w-full px-4 py-3 rounded-lg"
+                      style={{
+                        background: 'var(--bg-elevated)',
+                        border: '1px solid var(--border-default)',
+                        color: 'var(--text-primary)',
+                      }}
+                    />
+                  </div>
+                </div>
+                
+                <button
+                  type="submit"
+                  className="w-full px-4 py-3 rounded-lg font-semibold transition-all"
+                  style={{
+                    background: 'var(--gradient-green)',
+                    color: 'white',
+                  }}
+                >
+                  Save Changes
+                </button>
+              </form>
+            </div>
           </div>
         )}
       </div>
-      
+
       {/* Modals */}
-      <ConfirmationModal isOpen={deleteConfirmationProps.isOpen} title={deleteConfirmationProps.title} message={deleteConfirmationProps.message} onConfirm={deleteConfirmationProps.onConfirm} onCancel={handleCancelConfirmation} confirmText="Delete" />
-      <ConfirmationModal isOpen={statusConfirmationProps.isOpen} title={statusConfirmationProps.title} message={statusConfirmationProps.message} onConfirm={statusConfirmationProps.onConfirm} onCancel={handleCancelConfirmation} confirmText={statusConfirmationProps.confirmText} />
-      <TransactionDetailModal transaction={selectedTransaction} onClose={() => setSelectedTransaction(null)} />
+      <ConfirmationModal
+        isOpen={deleteConfirmationProps.isOpen}
+        title={deleteConfirmationProps.title}
+        message={deleteConfirmationProps.message}
+        onConfirm={deleteConfirmationProps.onConfirm}
+        onCancel={handleCancelConfirmation}
+        confirmText="Delete"
+      />
+      <ConfirmationModal
+        isOpen={statusConfirmationProps.isOpen}
+        title={statusConfirmationProps.title}
+        message={statusConfirmationProps.message}
+        onConfirm={statusConfirmationProps.onConfirm}
+        onCancel={handleCancelConfirmation}
+        confirmText={statusConfirmationProps.confirmText}
+      />
+      <TransactionDetailModal
+        transaction={selectedTransaction}
+        onClose={() => setSelectedTransaction(null)}
+      />
     </div>
   );
 };

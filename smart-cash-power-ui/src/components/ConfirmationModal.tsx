@@ -1,5 +1,4 @@
 import React from 'react';
-import './MeterDetailModal.css'; // Reuse the same CSS for overlay and basic structure
 
 interface ConfirmationModalProps {
   isOpen: boolean;
@@ -25,20 +24,44 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   }
 
   return (
-    <div className="modal-overlay" onClick={onCancel}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>{title}</h2>
-          <button onClick={onCancel} className="close-button">&times;</button>
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(4px)' }}
+      onClick={onCancel}
+    >
+      <div 
+        className="w-full max-w-md p-6 rounded-2xl animate-fade-in"
+        style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4">
+          <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>{title}</h2>
         </div>
-        <div className="modal-body">
-          <p>{message}</p>
+        
+        <div className="mb-6">
+          <p style={{ color: 'var(--text-secondary)' }}>{message}</p>
         </div>
-        <div className="modal-footer" style={{ justifyContent: 'space-between' }}>
-          <button className="purchase-btn" onClick={onCancel} style={{ backgroundColor: 'var(--secondary)'}}>
+        
+        <div className="flex gap-3">
+          <button 
+            onClick={onCancel}
+            className="flex-1 px-4 py-3 rounded-lg font-semibold transition-all"
+            style={{
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border-default)',
+              color: 'var(--text-primary)',
+            }}
+          >
             {cancelText}
           </button>
-          <button className="purchase-btn" onClick={onConfirm} style={{ backgroundColor: 'var(--error)'}}>
+          <button 
+            onClick={onConfirm}
+            className="flex-1 px-4 py-3 rounded-lg font-semibold transition-all"
+            style={{
+              background: confirmText === 'Delete' ? 'linear-gradient(135deg, #dc2626 0%, #ef4444 100%)' : 'var(--gradient-green)',
+              color: 'white',
+            }}
+          >
             {confirmText}
           </button>
         </div>
