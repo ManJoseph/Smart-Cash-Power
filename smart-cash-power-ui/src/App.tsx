@@ -301,8 +301,9 @@ const AuthScreen = ({ mode, onAuthenticated }: AuthScreenProps) => {
         setSuccessMessage('Account created successfully! Please login to continue.');
         setTimeout(() => navigate('/login', { replace: true }), 1500);
       }
-    } catch (err) {
-      setError(mode === 'login' ? 'Login failed. Please check your credentials.' : 'Registration failed. Please try again.');
+    } catch (err: any) {
+      const errorMessage = err.message || (mode === 'login' ? 'Login failed. Please check your credentials.' : 'Registration failed. Please try again.');
+      setError(errorMessage);
       console.error(err);
     }
   };
