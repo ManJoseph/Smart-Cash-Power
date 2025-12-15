@@ -1,6 +1,34 @@
 import { useCallback, useEffect, useState, useMemo } from 'react';
 import './index.css';
 import { Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
+import toast, { Toaster } from 'react-hot-toast';
+import { 
+  Zap, 
+  TrendingUp, 
+  Shield, 
+  Users, 
+  Activity, 
+  CreditCard,
+  Home,
+  Settings as SettingsIcon,
+  LogOut,
+  Plus,
+  Search,
+  Trash2,
+  Eye,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Menu,
+  X,
+  BarChart3,
+  DollarSign,
+  Clock,
+  UserCheck,
+  UserX,
+  FileText,
+  Power
+} from 'lucide-react';
 import {
   addMeter,
   approvePasswordReset,
@@ -174,34 +202,39 @@ const App = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 font-sans">
-      <div className="max-w-5xl mx-auto px-4 py-10">
-        <Routes>
-          <Route path="/" element={<LandingPage currentUser={currentUser} />} />
-          <Route
-            path="/login"
-            element={
-              currentUser ? (
-                <Navigate to={resolveDestination(currentUser)} replace />
-              ) : (
+    <div className="min-h-screen font-sans" style={{ background: 'var(--bg-darkest)' }}>
+      <Toaster position="top-right" />
+      <Routes>
+        <Route path="/" element={<LandingPage currentUser={currentUser} />} />
+        <Route
+          path="/login"
+          element={
+            currentUser ? (
+              <Navigate to={resolveDestination(currentUser)} replace />
+            ) : (
+              <div className="max-w-5xl mx-auto px-4 py-10">
                 <AuthScreen key="login" mode="login" onAuthenticated={handleAuthSuccess} />
-              )
-            }
-          />
-          <Route
-            path="/signup"
-            element={
-              currentUser ? (
-                <Navigate to={resolveDestination(currentUser)} replace />
-              ) : (
+              </div>
+            )
+          }
+        />
+        <Route
+          path="/signup"
+          element={
+            currentUser ? (
+              <Navigate to={resolveDestination(currentUser)} replace />
+            ) : (
+              <div className="max-w-5xl mx-auto px-4 py-10">
                 <AuthScreen key="signup" mode="signup" onAuthenticated={handleAuthSuccess} />
-              )
-            }
-          />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute currentUser={currentUser} allowedRoles={['USER']}>
+              </div>
+            )
+          }
+        />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute currentUser={currentUser} allowedRoles={['USER']}>
+              <div className="max-w-5xl mx-auto px-4 py-10">
                 <DashboardScreen
                   currentUser={currentUser as AuthUser}
                   handleLogout={handleLogout}
@@ -211,44 +244,50 @@ const App = () => {
                   onNavigateToHistory={() => navigate('/dashboard/history')}
                   onRefreshMeters={() => fetchMeters(currentUser)}
                 />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/dashboard/purchase"
-            element={
-              <ProtectedRoute currentUser={currentUser} allowedRoles={['USER']}>
+              </div>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/purchase"
+          element={
+            <ProtectedRoute currentUser={currentUser} allowedRoles={['USER']}>
+              <div className="max-w-5xl mx-auto px-4 py-10">
                 <div className="w-full max-w-2xl mx-auto bg-white shadow-lg rounded-2xl p-6">
                   <PurchaseScreen
                     meters={meters} // Pass canonical meters to purchase screen
                     onNavigateBack={() => navigate('/dashboard')}
                   />
                 </div>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/dashboard/history"
-            element={
-              <ProtectedRoute currentUser={currentUser} allowedRoles={['USER']}>
+              </div>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/history"
+          element={
+            <ProtectedRoute currentUser={currentUser} allowedRoles={['USER']}>
+              <div className="max-w-5xl mx-auto px-4 py-10">
                 <div className="w-full max-w-2xl mx-auto bg-white shadow-lg rounded-2xl p-6">
                   <HistoryScreen onNavigateBack={() => navigate('/dashboard')} />
                 </div>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute currentUser={currentUser} allowedRoles={['ADMIN']}>
-                <AdminDashboard currentUser={currentUser} onLogout={handleLogout} />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/settings"
-            element={
-              <ProtectedRoute currentUser={currentUser}>
+              </div>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute currentUser={currentUser} allowedRoles={['ADMIN']}>
+              <AdminDashboard currentUser={currentUser} onLogout={handleLogout} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute currentUser={currentUser}>
+              <div className="max-w-5xl mx-auto px-4 py-10">
                 <SettingsScreen
                   currentUser={currentUser as AuthUser}
                   onUpdateSuccess={(updatedUser) => {
@@ -257,13 +296,17 @@ const App = () => {
                     localStorage.setItem('user', JSON.stringify(newCurrentUser));
                   }}
                 />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="/reset-password" element={<ResetPasswordScreen />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </div>
+              </div>
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/reset-password" element={
+          <div className="max-w-5xl mx-auto px-4 py-10">
+            <ResetPasswordScreen />
+          </div>
+        } />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </div>
   );
 };
@@ -295,14 +338,24 @@ const AuthScreen = ({ mode, onAuthenticated }: AuthScreenProps) => {
     try {
       if (mode === 'login') {
         const response = await loginUser({ email: data.email, password: data.password });
+        toast.success(`Welcome back, ${response.user.fullName || response.user.email}!`);
         onAuthenticated(response.user as AuthUser);
       } else {
         await registerUser(data);
+        toast.success('Account created successfully! Redirecting to login...');
         setSuccessMessage('Account created successfully! Please login to continue.');
         setTimeout(() => navigate('/login', { replace: true }), 1500);
       }
     } catch (err: any) {
       const errorMessage = err.message || (mode === 'login' ? 'Login failed. Please check your credentials.' : 'Registration failed. Please try again.');
+      
+      // Check if user is blocked
+      if (errorMessage.toLowerCase().includes('blocked') || errorMessage.toLowerCase().includes('inactive')) {
+        toast.error('Your account has been blocked. Please contact support.');
+      } else {
+        toast.error(errorMessage);
+      }
+      
       setError(errorMessage);
       console.error(err);
     }
@@ -903,39 +956,307 @@ const LandingPage = ({ currentUser }: LandingPageProps) => {
     }
   };
 
+  const features = [
+    {
+      icon: Zap,
+      title: 'Instant Purchases',
+      description: 'Buy electricity tokens for any registered meter in just three simple steps. Fast, secure, and reliable.',
+    },
+    {
+      icon: TrendingUp,
+      title: 'Usage Analytics',
+      description: 'Track your spending history and monitor token deliveries in real-time with detailed insights.',
+    },
+    {
+      icon: Shield,
+      title: 'Secure & Reliable',
+      description: 'Bank-level security with JWT authentication and encrypted transactions for complete peace of mind.',
+    },
+    {
+      icon: Users,
+      title: 'Multi-Meter Management',
+      description: 'Register and manage multiple electricity meters from one centralized dashboard.',
+    },
+    {
+      icon: Activity,
+      title: 'Real-Time Monitoring',
+      description: 'Watch your electricity consumption in real-time with live meter updates and notifications.',
+    },
+    {
+      icon: CreditCard,
+      title: 'Flexible Payments',
+      description: 'Multiple payment options including mobile money for convenient and instant transactions.',
+    },
+  ];
+
+  const scrollToSection = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   return (
-    <div className="w-full bg-white shadow-lg rounded-3xl p-10 space-y-10">
-      <section className="space-y-6 text-center">
-        <p className="inline-block px-4 py-1 rounded-full bg-green-100 text-green-700 text-sm font-semibold">Smart utility management</p>
-        <h1 className="text-5xl font-extrabold text-gray-900">
-          Power your home the smart way
-        </h1>
-        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-          Buy electricity tokens, monitor meters, and keep every transaction at your fingertips. SmartCashPower brings the full experience to web and mobile.
-        </p>
-        <div className="flex flex-wrap gap-4 justify-center">
-          <button onClick={handlePrimaryAction} className="px-8 py-4 rounded-xl bg-blue-600 text-white font-semibold text-lg hover:bg-blue-700">
-            {currentUser ? 'Go to my workspace' : 'Get started'}
-          </button>
-          {!currentUser && (
-            <button onClick={() => navigate('/signup')} className="px-8 py-4 rounded-xl border-2 border-blue-200 text-blue-700 font-semibold text-lg hover:bg-blue-50">
-              Create account
+    <div className="w-full min-h-screen" style={{ background: 'var(--gradient-dark)' }}>
+      {/* Navigation Header */}
+      <header className="sticky top-0 z-50 backdrop-blur-lg" style={{ background: 'rgba(13, 13, 13, 0.8)', borderBottom: '1px solid var(--border-subtle)' }}>
+        <nav className="max-w-6xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            {/* Logo */}
+            <div className="flex items-center gap-2 cursor-pointer" onClick={() => scrollToSection('hero')}>
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--gradient-green)' }}>
+                <Zap className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                SmartCashPower
+              </span>
+            </div>
+
+            {/* Navigation Links */}
+            <div className="hidden md:flex items-center gap-8">
+              <button
+                onClick={() => scrollToSection('hero')}
+                className="text-sm font-medium transition-colors"
+                style={{ color: 'var(--text-secondary)' }}
+                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--green-primary)'}
+                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
+              >
+                Home
+              </button>
+              <button
+                onClick={() => scrollToSection('features')}
+                className="text-sm font-medium transition-colors"
+                style={{ color: 'var(--text-secondary)' }}
+                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--green-primary)'}
+                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
+              >
+                Features
+              </button>
+              <button
+                onClick={() => scrollToSection('cta')}
+                className="text-sm font-medium transition-colors"
+                style={{ color: 'var(--text-secondary)' }}
+                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--green-primary)'}
+                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
+              >
+                Get Started
+              </button>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-3">
+              {currentUser ? (
+                <button
+                  onClick={handlePrimaryAction}
+                  className="px-6 py-2 rounded-lg font-semibold text-sm transition-all duration-300 hover:scale-105"
+                  style={{
+                    background: 'var(--gradient-green)',
+                    color: 'white',
+                  }}
+                >
+                  Dashboard
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => navigate('/login')}
+                    className="px-6 py-2 rounded-lg font-semibold text-sm transition-colors"
+                    style={{ color: 'var(--text-secondary)' }}
+                    onMouseEnter={(e) => e.currentTarget.style.color = 'var(--green-primary)'}
+                    onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
+                  >
+                    Login
+                  </button>
+                  <button
+                    onClick={() => navigate('/signup')}
+                    className="px-6 py-2 rounded-lg font-semibold text-sm transition-all duration-300 hover:scale-105"
+                    style={{
+                      background: 'var(--gradient-green)',
+                      color: 'white',
+                    }}
+                  >
+                    Sign Up
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </nav>
+      </header>
+
+      {/* Hero Section */}
+      <section id="hero" className="relative px-6 py-20 md:py-32 overflow-hidden">
+        {/* Animated Background Elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-20 left-10 w-72 h-72 rounded-full blur-3xl animate-pulse" style={{ background: 'rgba(34, 197, 94, 0.1)' }}></div>
+          <div className="absolute bottom-20 right-10 w-96 h-96 rounded-full blur-3xl animate-pulse" style={{ background: 'rgba(34, 197, 94, 0.08)', animationDelay: '1s' }}></div>
+        </div>
+
+        <div className="relative max-w-6xl mx-auto">
+          {/* Badge */}
+          <div className="flex justify-center mb-8 animate-fade-in">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full" style={{ border: '1px solid var(--border-green)', background: 'rgba(34, 197, 94, 0.1)' }}>
+              <Zap className="w-4 h-4" style={{ color: 'var(--green-primary)' }} />
+              <span className="text-sm font-medium" style={{ color: 'var(--green-light)' }}>
+                Smart Utility Management
+              </span>
+            </div>
+          </div>
+
+          {/* Main Heading */}
+          <h1 className="text-5xl md:text-7xl font-extrabold text-center mb-6 animate-fade-in" style={{ color: 'var(--text-primary)', animationDelay: '0.1s' }}>
+            Power Your Home
+            <br />
+            <span className="text-gradient-green">
+              The Smart Way
+            </span>
+          </h1>
+
+          {/* Subtitle */}
+          <p className="text-lg md:text-xl text-center max-w-3xl mx-auto mb-12 animate-fade-in" style={{ color: 'var(--text-secondary)', animationDelay: '0.2s' }}>
+            Buy electricity tokens, monitor meters, and keep every transaction at your fingertips. 
+            SmartCashPower brings the full experience to web and mobile.
+          </p>
+
+          {/* CTA Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center animate-fade-in" style={{ animationDelay: '0.3s' }}>
+            <button
+              onClick={handlePrimaryAction}
+              className="group px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-300 hover:scale-105 flex items-center gap-2"
+              style={{
+                background: 'var(--gradient-green)',
+                color: 'white',
+                boxShadow: 'var(--shadow-md)',
+              }}
+            >
+              {currentUser ? 'Go to Dashboard' : 'Get Started'}
+              <Zap className="w-5 h-5 group-hover:rotate-12 transition-transform" />
             </button>
-          )}
+
+            {!currentUser && (
+              <button
+                onClick={() => navigate('/signup')}
+                className="px-8 py-4 rounded-xl font-semibold text-lg border-2 transition-all duration-300 hover:scale-105"
+                style={{
+                  borderColor: 'var(--green-primary)',
+                  color: 'var(--green-primary)',
+                  background: 'transparent',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'var(--green-primary)';
+                  e.currentTarget.style.color = 'white';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.color = 'var(--green-primary)';
+                }}
+              >
+                Create Account
+              </button>
+            )}
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-3 gap-8 mt-20 max-w-3xl mx-auto animate-fade-in" style={{ animationDelay: '0.4s' }}>
+            {[
+              { label: 'Active Users', value: '10K+' },
+              { label: 'Transactions', value: '50K+' },
+              { label: 'Uptime', value: '99.9%' }
+            ].map((stat, index) => (
+              <div key={index} className="text-center">
+                <div className="text-3xl md:text-4xl font-bold mb-2" style={{ color: 'var(--green-primary)' }}>
+                  {stat.value}
+                </div>
+                <div className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                  {stat.label}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
-      <section className="grid gap-6 md:grid-cols-3">
-        {[
-          { title: 'Instant purchases', description: 'Buy electricity for any registered meter in just three steps.' },
-          { title: 'Usage analytics', description: 'Track spending history and keep tabs on token deliveries.' },
-          { title: 'Admin oversight', description: 'Admins get approvals, customer insights, and transaction monitoring.' },
-        ].map((card) => (
-          <div key={card.title} className="p-6 border border-gray-100 rounded-2xl bg-gray-50">
-            <h3 className="text-xl font-semibold text-gray-800">{card.title}</h3>
-            <p className="text-gray-600 mt-2">{card.description}</p>
+
+      {/* Features Section */}
+      <section id="features" className="px-6 py-20" style={{ background: 'var(--bg-darker)' }}>
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
+              Everything You Need
+            </h2>
+            <p className="text-lg" style={{ color: 'var(--text-secondary)' }}>
+              Powerful features designed for modern electricity management
+            </p>
           </div>
-        ))}
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {features.map((feature, index) => {
+              const Icon = feature.icon;
+              return (
+                <div
+                  key={index}
+                  className="group p-6 rounded-2xl transition-all duration-300 hover:scale-105 cursor-pointer animate-fade-in"
+                  style={{
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border-subtle)',
+                    animationDelay: `${index * 0.1}s`
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border-green)';
+                    e.currentTarget.style.boxShadow = 'var(--shadow-green)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border-subtle)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  <div
+                    className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
+                    style={{ background: 'rgba(34, 197, 94, 0.1)' }}
+                  >
+                    <Icon className="w-6 h-6" style={{ color: 'var(--green-primary)' }} />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
+                    {feature.title}
+                  </h3>
+                  <p style={{ color: 'var(--text-secondary)' }}>
+                    {feature.description}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </section>
+
+      {/* CTA Section */}
+      <section id="cta" className="px-6 py-20" style={{ background: 'linear-gradient(135deg, #0d0d0d 0%, #15803d 100%)' }}>
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-4xl md:text-5xl font-bold mb-6" style={{ color: 'var(--text-primary)' }}>
+            Ready to Get Started?
+          </h2>
+          <p className="text-lg mb-8" style={{ color: 'var(--text-secondary)' }}>
+            Join thousands of users managing their electricity smarter
+          </p>
+          <button
+            onClick={handlePrimaryAction}
+            className="px-10 py-5 rounded-xl font-semibold text-lg transition-all duration-300 hover:scale-105"
+            style={{
+              background: 'var(--gradient-green)',
+              color: 'white',
+              boxShadow: 'var(--shadow-green)',
+            }}
+          >
+            {currentUser ? 'Go to Dashboard' : 'Start Free Today'}
+          </button>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="px-6 py-8" style={{ background: 'var(--bg-darkest)', borderTop: '1px solid var(--border-subtle)' }}>
+        <div className="max-w-6xl mx-auto text-center" style={{ color: 'var(--text-muted)' }}>
+          <p>© 2024 SmartCashPower. Built with ❤️ for a smarter energy future.</p>
+        </div>
+      </footer>
     </div>
   );
 };
