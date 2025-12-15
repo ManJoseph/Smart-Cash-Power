@@ -53,6 +53,7 @@ import {
 } from './services/apiService';
 import PurchaseScreen from './components/PurchaseScreen';
 import HistoryScreen from './components/HistoryScreen';
+import ResetPasswordPage from './components/ResetPasswordPage';
 import ConfirmationModal from './components/ConfirmationModal';
 import type { ReactElement } from 'react';
 
@@ -227,6 +228,10 @@ const App = () => {
           }
         />
         <Route
+          path="/reset-password"
+          element={<ResetPasswordPage />}
+        />
+        <Route
           path="/dashboard"
           element={
             <ProtectedRoute currentUser={currentUser} allowedRoles={['USER']}>
@@ -384,9 +389,13 @@ const AuthScreen = ({ mode, onAuthenticated }: AuthScreenProps) => {
     try {
       await requestPasswordReset(forgotEmail);
       setSuccessMessage('Request sent to admin. Please wait for approval.');
+      toast.success('Request sent successfully! Wait for admin approval to continue.', {
+        duration: 6000, // 6 seconds for user to read
+      });
     } catch (e) {
       console.error(e);
       setError('Failed to send reset request. Please try again.');
+      toast.error('Failed to send reset request. Please try again.');
     } finally {
       setIsSendingReset(false);
     }
