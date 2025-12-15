@@ -407,8 +407,8 @@ Have an idea for improvement? We'd love to hear it!
 
 **Developer**: Joseph Manizabayo  
 **Email**: josephmanizabayo7@gmail.com  
-**GitHub**: [@ManJoseph](https://github.com/ManJoseph)
-**LinkedIn**: [LinkedIn](https://www.linkedin.com/in/manjoseph/)
+**GitHub**: [@ManJoseph](https://github.com/ManJoseph)  
+**LinkedIn**: [manjoseph](https://www.linkedin.com/in/manjoseph/)  
 **Phone**: +250 784 461 703
 
 For bug reports and feature requests, please open an issue on GitHub.
