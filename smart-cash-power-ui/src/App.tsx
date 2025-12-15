@@ -230,17 +230,15 @@ const App = () => {
           path="/dashboard"
           element={
             <ProtectedRoute currentUser={currentUser} allowedRoles={['USER']}>
-              <div className="max-w-5xl mx-auto px-4 py-10">
-                <DashboardScreen
-                  currentUser={currentUser as AuthUser}
-                  handleLogout={handleLogout}
-                  meters={drainingMeters} // Pass draining meters to dashboard
-                  isLoadingMeters={isLoadingMeters}
-                  onNavigateToPurchase={(meter) => navigate('/dashboard/purchase', { state: { meter } })}
-                  onNavigateToHistory={() => navigate('/dashboard/history')}
-                  onRefreshMeters={() => fetchMeters(currentUser)}
-                />
-              </div>
+              <DashboardScreen
+                currentUser={currentUser as AuthUser}
+                handleLogout={handleLogout}
+                meters={drainingMeters} // Pass draining meters to dashboard
+                isLoadingMeters={isLoadingMeters}
+                onNavigateToPurchase={(meter) => navigate('/dashboard/purchase', { state: { meter } })}
+                onNavigateToHistory={() => navigate('/dashboard/history')}
+                onRefreshMeters={() => fetchMeters(currentUser)}
+              />
             </ProtectedRoute>
           }
         />
@@ -248,14 +246,10 @@ const App = () => {
           path="/dashboard/purchase"
           element={
             <ProtectedRoute currentUser={currentUser} allowedRoles={['USER']}>
-              <div className="max-w-5xl mx-auto px-4 py-10">
-                <div className="w-full max-w-2xl mx-auto bg-white shadow-lg rounded-2xl p-6">
-                  <PurchaseScreen
-                    meters={meters} // Pass canonical meters to purchase screen
-                    onNavigateBack={() => navigate('/dashboard')}
-                  />
-                </div>
-              </div>
+              <PurchaseScreen
+                meters={meters}
+                onNavigateBack={() => navigate('/dashboard')}
+              />
             </ProtectedRoute>
           }
         />
@@ -263,11 +257,7 @@ const App = () => {
           path="/dashboard/history"
           element={
             <ProtectedRoute currentUser={currentUser} allowedRoles={['USER']}>
-              <div className="max-w-5xl mx-auto px-4 py-10">
-                <div className="w-full max-w-2xl mx-auto bg-white shadow-lg rounded-2xl p-6">
-                  <HistoryScreen onNavigateBack={() => navigate('/dashboard')} />
-                </div>
-              </div>
+              <HistoryScreen onNavigateBack={() => navigate('/dashboard')} />
             </ProtectedRoute>
           }
         />
@@ -739,108 +729,163 @@ const DashboardScreen = ({ currentUser, handleLogout, meters, isLoadingMeters, o
   };
 
   return (
-    <div className="space-y-8">
-      <header className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold text-gray-800">Dashboard</h2>
-          <p className="text-gray-600">Welcome back, {currentUser.fullName || currentUser.name || currentUser.email}!</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <Link to="/settings" className="text-gray-500 hover:text-gray-800">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          </Link>
-          <button onClick={handleLogout} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-            Logout
-          </button>
+    <div className="min-h-screen" style={{ background: 'var(--bg-darkest)' }}>
+      {/* Header */}
+      <header className="p-6 mb-6" style={{ background: 'var(--bg-card)', borderBottom: '1px solid var(--border-default)' }}>
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>Dashboard</h2>
+            <p style={{ color: 'var(--text-secondary)' }}>Welcome back, {currentUser.fullName || currentUser.name || currentUser.email}!</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Link 
+              to="/settings" 
+              className="w-12 h-12 rounded-xl flex items-center justify-center transition-all hover:scale-105"
+              style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}
+            >
+              <SettingsIcon className="w-6 h-6" style={{ color: 'var(--text-secondary)' }} />
+            </Link>
+            <button 
+              onClick={handleLogout} 
+              className="px-4 py-3 rounded-lg font-semibold transition-all"
+              style={{ background: 'linear-gradient(135deg, #dc2626 0%, #ef4444 100%)', color: 'white' }}
+            >
+              Logout
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* Add Meter Section */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xl font-semibold text-gray-800">My Meters</h3>
-          <button
-            onClick={() => setShowAddMeter(!showAddMeter)}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
-          >
-            {showAddMeter ? 'Cancel' : '+ Add Meter'}
-          </button>
-        </div>
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-6 pb-8 space-y-6">
+        {/* Add Meter Section */}
+        <div className="p-6 rounded-2xl" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>My Meters</h3>
+            <button
+              onClick={() => setShowAddMeter(!showAddMeter)}
+              className="px-4 py-2 rounded-lg font-semibold transition-all"
+              style={{ 
+                background: showAddMeter ? 'var(--bg-elevated)' : 'var(--gradient-green)', 
+                color: showAddMeter ? 'var(--text-primary)' : 'white',
+                border: showAddMeter ? '1px solid var(--border-default)' : 'none'
+              }}
+            >
+              {showAddMeter ? 'Cancel' : '+ Add Meter'}
+            </button>
+          </div>
 
-        {showAddMeter && (
-          <form onSubmit={handleAddMeter} className="p-4 bg-blue-50 rounded-lg space-y-3">
+          {showAddMeter && (
+            <form onSubmit={handleAddMeter} className="p-4 rounded-lg space-y-3 mb-4" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
+              <input
+                type="text"
+                value={newMeterNumber}
+                onChange={(e) => setNewMeterNumber(e.target.value)}
+                placeholder="Enter Meter Number"
+                className="w-full px-4 py-3 rounded-lg"
+                style={{
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--border-default)',
+                  color: 'var(--text-primary)',
+                }}
+                disabled={isAddingMeter}
+              />
+              {addMeterError && <p className="text-sm" style={{ color: '#ef4444' }}>{addMeterError}</p>}
+              {addMeterSuccess && <p className="text-sm" style={{ color: 'var(--green-primary)' }}>Meter added successfully!</p>}
+              <button
+                type="submit"
+                disabled={isAddingMeter || !newMeterNumber.trim()}
+                className="w-full px-4 py-3 rounded-lg font-semibold transition-all disabled:opacity-50"
+                style={{ background: 'var(--gradient-green)', color: 'white' }}
+              >
+                {isAddingMeter ? 'Adding...' : 'Add Meter'}
+              </button>
+            </form>
+          )}
+
+          {/* Search Bar */}
+          <div className="flex items-center gap-3 px-4 py-3 rounded-lg mb-4" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>
+            <Search className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
             <input
               type="text"
-              value={newMeterNumber}
-              onChange={(e) => setNewMeterNumber(e.target.value)}
-              placeholder="Enter Meter Number"
-              className="w-full px-4 py-2 text-gray-700 bg-white border-2 border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={isAddingMeter}
+              placeholder="Search by meter number..."
+              value={meterSearch}
+              onChange={(e) => setMeterSearch(e.target.value)}
+              className="flex-1 bg-transparent outline-none"
+              style={{ color: 'var(--text-primary)' }}
             />
-            {addMeterError && <p className="text-red-500 text-sm">{addMeterError}</p>}
-            {addMeterSuccess && <p className="text-green-600 text-sm">Meter added successfully!</p>}
-            <button
-              type="submit"
-              disabled={isAddingMeter || !newMeterNumber.trim()}
-              className="w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
-            >
-              {isAddingMeter ? 'Adding...' : 'Add Meter'}
-            </button>
-          </form>
-        )}
+          </div>
 
-        <div className="pt-2">
-            <input
-                type="text"
-                placeholder="Search by meter number..."
-                value={meterSearch}
-                onChange={(e) => setMeterSearch(e.target.value)}
-                className="w-full px-4 py-3 text-lg text-gray-700 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+          {/* Meters List */}
+          {isLoadingMeters ? (
+            <p className="text-center py-8" style={{ color: 'var(--text-secondary)' }}>Loading meters...</p>
+          ) : filteredMeters.length > 0 ? (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {filteredMeters.map((meter) => (
+                <button
+                  key={meter.id ?? meter.meterNumber}
+                  type="button"
+                  onClick={() => setSelectedMeter(meter)}
+                  className="p-5 rounded-xl text-left transition-all hover:scale-105"
+                  style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--border-green)'}
+                  onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--border-default)'}
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'var(--green-glow)' }}>
+                      <Power className="w-6 h-6" style={{ color: 'var(--green-primary)' }} />
+                    </div>
+                    {meter.id && <p className="text-xs px-2 py-1 rounded" style={{ background: 'var(--bg-card)', color: 'var(--text-muted)' }}>ID: {meter.id}</p>}
+                  </div>
+                  <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>METER NUMBER</p>
+                  <p className="text-lg font-bold mb-3" style={{ color: 'var(--text-primary)' }}>{meter.meterNumber}</p>
+                  <div className="flex items-center justify-between pt-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                    <div>
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Current Units</p>
+                      <p className="text-xl font-bold" style={{ color: 'var(--green-primary)' }}>
+                        {meter.currentUnits !== undefined ? `${meter.currentUnits.toFixed(2)}` : 'N/A'}
+                      </p>
+                    </div>
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>kWh</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 rounded-xl" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
+              <p className="mb-2" style={{ color: 'var(--text-secondary)' }}>No meters found.</p>
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                {meterSearch ? `No meters match your search for "${meterSearch}".` : 'Add a meter to get started.'}
+              </p>
+            </div>
+          )}
         </div>
 
-        {/* Meters List */}
-        {isLoadingMeters ? (
-          <p className="text-center text-gray-500 py-4">Loading meters...</p>
-        ) : filteredMeters.length > 0 ? (
-          <div className="space-y-3">
-            {filteredMeters.map((meter) => (
-              <MeterCard
-                key={meter.id ?? meter.meterNumber}
-                meter={meter}
-                onClick={() => setSelectedMeter(meter)}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8 bg-gray-50 rounded-lg">
-            <p className="text-gray-500 mb-2">No meters found.</p>
-            <p className="text-sm text-gray-400">
-                {meterSearch ? `No meters match your search for "${meterSearch}".` : 'Add a meter to get started.'}
-            </p>
-          </div>
-        )}
+        {/* Action Buttons */}
+        <div className="grid gap-4 md:grid-cols-2">
+          <button
+            onClick={() => onNavigateToPurchase()}
+            disabled={meters.length === 0}
+            className="px-6 py-4 rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ background: 'var(--gradient-green)', color: 'white' }}
+          >
+            ⚡ Buy Electricity
+          </button>
+          <button
+            onClick={onNavigateToHistory}
+            className="px-6 py-4 rounded-xl font-semibold transition-all"
+            style={{ 
+              background: 'var(--bg-card)', 
+              border: '1px solid var(--border-green)',
+              color: 'var(--green-primary)'
+            }}
+          >
+            📊 View History
+          </button>
+        </div>
       </div>
 
-      {/* Action Buttons */}
-      <div className="space-y-4 text-center">
-        <button
-          onClick={() => onNavigateToPurchase()}
-          disabled={meters.length === 0}
-          className="w-full px-6 py-4 font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-          Buy Electricity
-        </button>
-        <button
-          onClick={onNavigateToHistory}
-          className="w-full px-6 py-3 font-semibold text-blue-600 bg-transparent border-2 border-blue-600 rounded-lg hover:bg-blue-50"
-        >
-          View History
-        </button>
-      </div>
+      {/* Modals */}
       <MeterDetailModal
         meter={selectedMeter}
         onClose={() => setSelectedMeter(null)}
@@ -894,16 +939,12 @@ const SettingsScreen = ({ currentUser, onUpdateSuccess }: SettingsScreenProps) =
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    setMessage(null);
-    setError(null);
     if (newPassword && newPassword !== confirmPassword) {
-      setError('New password and confirmation do not match.');
+      toast.error('New password and confirmation do not match.');
       return;
     }
     setIsSaving(true);
@@ -923,9 +964,7 @@ const SettingsScreen = ({ currentUser, onUpdateSuccess }: SettingsScreenProps) =
       }
       
       if(updated) {
-        setMessage('Settings saved successfully.');
-      } else {
-        setMessage(null);
+        toast.success('Settings saved successfully');
       }
       
       setCurrentPassword('');
@@ -935,86 +974,137 @@ const SettingsScreen = ({ currentUser, onUpdateSuccess }: SettingsScreenProps) =
     } catch (e) {
       console.error(e);
       const errorMessage = e instanceof Error ? e.message : 'Failed to save settings.';
-      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsSaving(false);
     }
   };
 
   return (
-    <div className="w-full max-w-xl mx-auto bg-white shadow-lg rounded-2xl p-8 space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900">Account settings</h2>
-      <form className="space-y-4" onSubmit={handleSave}>
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">Email</label>
-          <input
-            type="email"
-            value={currentUser.email}
-            disabled
-            className="w-full px-4 py-3 text-gray-500 bg-gray-100 rounded-lg border border-transparent"
-          />
+    <div className="min-h-screen" style={{ background: 'var(--bg-darkest)' }}>
+      <div className="max-w-2xl mx-auto px-6 py-12">
+        <div className="p-8 rounded-2xl space-y-6" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
+          <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Account Settings</h2>
+          
+          <form className="space-y-5" onSubmit={handleSave}>
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Email</label>
+              <input
+                type="email"
+                value={currentUser.email}
+                disabled
+                className="w-full px-4 py-3 rounded-lg"
+                style={{
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border-default)',
+                  color: 'var(--text-muted)',
+                }}
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Full Name</label>
+              <input
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className="w-full px-4 py-3 rounded-lg"
+                style={{
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border-default)',
+                  color: 'var(--text-primary)',
+                }}
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Phone Number</label>
+              <input
+                type="tel"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                className="w-full px-4 py-3 rounded-lg"
+                style={{
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border-default)',
+                  color: 'var(--text-primary)',
+                }}
+              />
+            </div>
+            
+            <div className="pt-4" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+              <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>Change Password</h3>
+              
+              <div className="space-y-4">
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Current password"
+                  className="w-full px-4 py-3 rounded-lg"
+                  style={{
+                    background: 'var(--bg-elevated)',
+                    border: '1px solid var(--border-default)',
+                    color: 'var(--text-primary)',
+                  }}
+                />
+                
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="New password"
+                  className="w-full px-4 py-3 rounded-lg"
+                  style={{
+                    background: 'var(--bg-elevated)',
+                    border: '1px solid var(--border-default)',
+                    color: 'var(--text-primary)',
+                  }}
+                />
+                
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm new password"
+                  className="w-full px-4 py-3 rounded-lg"
+                  style={{
+                    background: 'var(--bg-elevated)',
+                    border: '1px solid var(--border-default)',
+                    color: 'var(--text-primary)',
+                  }}
+                />
+              </div>
+            </div>
+            
+            <div className="flex gap-3 pt-4">
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
+                className="flex-1 px-4 py-3 rounded-lg font-semibold transition-all"
+                style={{
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border-default)',
+                  color: 'var(--text-primary)',
+                }}
+              >
+                Back
+              </button>
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="flex-1 px-4 py-3 rounded-lg font-semibold transition-all disabled:opacity-50"
+                style={{
+                  background: 'var(--gradient-green)',
+                  color: 'white',
+                }}
+              >
+                {isSaving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </form>
         </div>
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">Full name</label>
-          <input
-            type="text"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            className="w-full px-4 py-3 text-gray-700 bg-gray-100 rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">Phone number</label>
-          <input
-            type="tel"
-            value={phoneNumber}
-            onChange={(e) => setPhoneNumber(e.target.value)}
-            className="w-full px-4 py-3 text-gray-700 bg-gray-100 rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-        <div className="pt-4 space-y-3 border-t border-gray-100">
-          <h3 className="text-sm font-semibold text-gray-900">Change password</h3>
-          <input
-            type="password"
-            value={currentPassword}
-            onChange={(e) => setCurrentPassword(e.target.value)}
-            placeholder="Current password"
-            className="w-full px-4 py-3 text-gray-700 bg-gray-100 rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <input
-            type="password"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            placeholder="New password"
-            className="w-full px-4 py-3 text-gray-700 bg-gray-100 rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <input
-            type="password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder="Confirm new password"
-            className="w-full px-4 py-3 text-gray-700 bg-gray-100 rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-        {error && <p className="text-sm text-red-600 text-center">{error}</p>}
-        {message && <p className="text-sm text-green-600 text-center">{message}</p>}
-        <div className="flex flex-col gap-3 pt-4">
-          <button
-            type="submit"
-            disabled={isSaving}
-            className="w-full px-4 py-3 font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
-          >
-            {isSaving ? 'Saving...' : 'Save changes'}
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate(-1)} // Go back to the previous page
-            className="w-full px-4 py-3 font-semibold text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300"
-          >
-            Back
-          </button>
-        </div>
-      </form>
+      </div>
     </div>
   );
 };
