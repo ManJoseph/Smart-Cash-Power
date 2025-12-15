@@ -63,6 +63,20 @@ export interface LoginResponse {
   };
 }
 
+export interface TransactionInitiationRequest {
+  meterId: number;
+  amount: number;
+  mobileMoneyProvider: string;
+}
+
+export interface TransactionResponse {
+  meterNumber: string;
+  unitsPurchased: number;
+  amountPaid: number;
+  currentStatus: string;
+  [key: string]: any; // Allow other properties
+}
+
 // 3. registerUser(registrationData)
 export const registerUser = async (registrationData: any) => {
   try {
@@ -99,6 +113,7 @@ export const loginUser = async (loginData: { email: string; password: string }):
   } catch (error: any) {
     console.error('Login failed:', error);
     handleApiError(error);
+    throw error; // Explicitly re-throw
   }
 };
 

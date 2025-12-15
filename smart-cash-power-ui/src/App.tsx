@@ -39,7 +39,7 @@ type AuthUser = {
   role?: UserRole;
 };
 
-type Meter = {
+export type Meter = {
   id?: number | string;
   meterNumber: string;
   currentUnits?: number;
@@ -454,7 +454,7 @@ interface DashboardScreenProps {
 }
 
 import MeterDetailModal from './components/MeterDetailModal';
-import TransactionDetailModal from './components/MeterDetailModal';
+import TransactionDetailModal from './components/TransactionDetailModal';
 
 // ... (rest of the imports)
 

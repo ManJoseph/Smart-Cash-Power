@@ -1,13 +1,9 @@
 import React from 'react';
 import './MeterDetailModal.css';
 
-interface Meter {
-  meterId: number;
-  meterNumber: string;
-  currentUnits: number;
-  usedUnits: number;
-  status: string;
-}
+// The Meter type is now expected to be imported or passed from a parent component.
+// It should match the shape: { id, meterNumber, currentUnits, usedUnits, active }
+import type { Meter } from '../App'; // Assuming we can export it from App.tsx
 
 interface MeterDetailModalProps {
   meter: Meter | null;
@@ -21,6 +17,8 @@ const MeterDetailModal: React.FC<MeterDetailModalProps> = ({ meter, onClose, onP
     return null;
   }
 
+  const status = meter.active ? 'Active' : 'Inactive';
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -31,7 +29,7 @@ const MeterDetailModal: React.FC<MeterDetailModalProps> = ({ meter, onClose, onP
         <div className="modal-body">
           <div className="detail-row">
             <strong>Meter ID:</strong>
-            <span>{meter.meterId}</span>
+            <span>{meter.id}</span>
           </div>
           <div className="detail-row">
             <strong>Meter Number:</strong>
@@ -39,15 +37,15 @@ const MeterDetailModal: React.FC<MeterDetailModalProps> = ({ meter, onClose, onP
           </div>
           <div className="detail-row">
             <strong>Remaining Units (kWh):</strong>
-            <span>{meter.currentUnits.toFixed(4)}</span>
+            <span>{(meter.currentUnits ?? 0).toFixed(4)}</span>
           </div>
           <div className="detail-row">
             <strong>Total Units Used (kWh):</strong>
-            <span>{meter.usedUnits.toFixed(4)}</span>
+            <span>{(meter.usedUnits ?? 0).toFixed(4)}</span>
           </div>
           <div className="detail-row">
             <strong>Status:</strong>
-            <span className={`status-badge status-${meter.status?.toLowerCase()}`}>{meter.status}</span>
+            <span className={`status-badge status-${status.toLowerCase()}`}>{status}</span>
           </div>
         </div>
         <div className="modal-footer">
