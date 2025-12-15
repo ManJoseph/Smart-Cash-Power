@@ -58,7 +58,7 @@ For the complete system, refer to the backend repository.
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/ManJoseph/Smart-Cash-Power.git
    cd smart-cash-power-ui
    ```
 
@@ -171,17 +171,11 @@ We welcome contributions! Please follow these steps:
 
 ---
 
-## 📝 License
-
-This project is licensed under the MIT License – see the LICENSE file for details.
-
----
-
 ## 📧 Support
 
 For issues, questions, or suggestions:
 - Open an issue on GitHub
-- Contact the development team at support@smartcashpower.com
+- Contact the developer at josephmanizabayo7@gmail.com
 
 ---
 
