@@ -12,6 +12,13 @@ SmartCashPower is an enterprise-grade solution that enables users to purchase el
 
 ---
 
+## 🖼️ Application Preview
+
+![SmartCashPower Home Page](home.png)
+*Modern, responsive landing page with dark theme and engaging UI*
+
+---
+
 ## 🎯 Overview
 
 SmartCashPower is a comprehensive prepaid electricity management system featuring:
@@ -21,7 +28,20 @@ SmartCashPower is a comprehensive prepaid electricity management system featurin
 - **💳 Instant Purchases** - Seamless electricity token purchases with mobile money integration
 - **📊 Admin Dashboard** - Comprehensive management tools for system administrators
 - **🏠 Multi-Meter Support** - Manage multiple electricity meters from a single account
-- **📱 Responsive Design** - Modern, mobile-first UI built with Tailwind CSS
+- **📱 Responsive Design** - Modern, mobile-first UI with dark theme
+
+---
+
+## ⚠️ Important Notes
+
+### Mock API Integrations
+
+**This project currently uses mock APIs for demonstration purposes:**
+
+- **REG (Rwanda Energy Group) Integration**: Mock implementation simulating real meter data and token generation
+- **Mobile Money Payments (MTN MoMo & Airtel Money)**: Mock payment processing for demonstration
+
+**Future Plans**: I am actively seeking partnerships with REG and mobile money providers to integrate real APIs when this project is accepted for production use. These integrations are designed to be easily replaceable with actual API implementations.
 
 ---
 
@@ -40,10 +60,11 @@ SmartCashPower is a comprehensive prepaid electricity management system featurin
 #### **Frontend**
 - **Framework**: React 18+ with TypeScript
 - **Build Tool**: Vite
-- **Styling**: Tailwind CSS 4.1
+- **Styling**: Tailwind CSS 4.1 with Custom Dark Theme
 - **Routing**: React Router v6
 - **HTTP Client**: Axios
 - **State Management**: React Hooks
+- **Notifications**: React Hot Toast
 
 ### System Architecture
 
@@ -56,9 +77,10 @@ SmartCashPower is a comprehensive prepaid electricity management system featurin
         │                         │
         ▼                         ▼
 ┌─────────────────┐      ┌──────────────────┐
-│  Tailwind CSS   │      │  External APIs   │
-│   Components    │      │  (MoMo, REG)     │
+│  Tailwind CSS   │      │  Mock APIs       │
+│  Dark Theme     │      │  (REG, MoMo)*    │
 └─────────────────┘      └──────────────────┘
+                         *To be replaced with real APIs
 ```
 
 ---
@@ -273,7 +295,7 @@ Smart-Cash-Power/
 │   │   ├── controller/           # REST API controllers
 │   │   ├── dto/                  # Data Transfer Objects
 │   │   ├── exception/            # Custom exceptions
-│   │   ├── integration/          # External API integrations
+│   │   ├── integration/          # External API integrations (Mock)
 │   │   ├── model/                # JPA entities
 │   │   ├── repository/           # Data access layer
 │   │   └── service/              # Business logic
@@ -296,13 +318,14 @@ Smart-Cash-Power/
 
 ## 🎨 UI/UX Highlights
 
-- **Modern Design**: Clean, professional interface with Tailwind CSS
+- **Modern Dark Theme**: Professional black-green color scheme throughout
 - **Responsive Layout**: Mobile-first design that works on all devices
 - **Real-Time Updates**: Live meter consumption visualization
 - **Interactive Modals**: Detailed views for meters and transactions
 - **Search & Filter**: Advanced filtering across all data tables
-- **Loading States**: Smooth loading indicators and skeleton screens
-- **Error Handling**: User-friendly error messages and validation
+- **Toast Notifications**: User-friendly feedback for all actions
+- **Loading States**: Smooth loading indicators and animations
+- **Error Handling**: Clear error messages and validation
 
 ---
 
@@ -311,13 +334,13 @@ Smart-Cash-Power/
 ### Purchase Flow
 ```
 User → Select Meter → Enter Amount → Choose Provider → Confirm
-  → Backend Processes Payment → Update Meter Units → Return Token
-    → Display Confirmation → Update Dashboard
+  → Backend Processes Payment (Mock) → Update Meter Units → Return Token
+    → Display Confirmation → Toast Notification → Update Dashboard
 ```
 
 ### Password Reset Flow
 ```
-User → Request Reset → Admin Reviews → Admin Approves
+User → Request Reset → Toast Notification (6s) → Admin Reviews → Admin Approves
   → User Receives Notification → User Resets Password
     → Confirmation → Redirect to Login
 ```
@@ -347,7 +370,15 @@ npm run test
 
 ## 🤝 Contributing
 
-We welcome contributions from the community! Here's how you can help:
+**We welcome contributions and ideas from developers and customers!**
+
+### How You Can Help
+
+- **Developers**: Code contributions, bug fixes, feature implementations
+- **Customers**: Feature requests, UI/UX feedback, usability suggestions
+- **Everyone**: Documentation improvements, testing, bug reports
+
+### Contribution Process
 
 1. **Fork** the repository
 2. **Create** a feature branch (`git checkout -b feature/AmazingFeature`)
@@ -361,6 +392,13 @@ We welcome contributions from the community! Here's how you can help:
 - Add tests for new features
 - Update documentation as needed
 - Ensure all tests pass before submitting
+
+### Share Your Ideas
+
+Have an idea for improvement? We'd love to hear it!
+- Open an issue with the `enhancement` label
+- Join discussions in existing issues
+- Reach out via email with suggestions
 
 ---
 
@@ -389,17 +427,46 @@ For bug reports and feature requests, please open an issue on GitHub.
 
 ---
 
-## 🗺️ Roadmap
+## 🗺️ Roadmap - Future Improvements
 
-- [ ] Mobile application (iOS & Android)
-- [ ] SMS notifications for low balance
-- [ ] Multi-language support
-- [ ] Advanced analytics and reporting
-- [ ] Integration with more payment providers
-- [ ] Automated meter reading via IoT devices
+**These features are planned for future development:**
+
+- [ ] **Real API Integrations**
+  - [ ] REG (Rwanda Energy Group) official API integration
+  - [ ] MTN Mobile Money production API
+  - [ ] Airtel Money production API
+  
+- [ ] **Mobile Applications**
+  - [ ] Native iOS application
+  - [ ] Native Android application
+  - [ ] Cross-platform support with React Native
+
+- [ ] **Enhanced Features**
+  - [ ] SMS notifications for low balance alerts
+  - [ ] Email notifications for transactions
+  - [ ] Multi-language support (Kinyarwanda, French, English)
+  - [ ] Advanced analytics and reporting dashboards
+  - [ ] Export reports to PDF/Excel
+  
+- [ ] **IoT Integration**
+  - [ ] Automated meter reading via IoT devices
+  - [ ] Real-time consumption monitoring
+  - [ ] Smart meter compatibility
+  
+- [ ] **Payment Options**
+  - [ ] Integration with more payment providers
+  - [ ] Bank transfer support
+  - [ ] Credit/Debit card payments
+  
+- [ ] **User Experience**
+  - [ ] Voice commands and accessibility features
+  - [ ] Chatbot support for customer service
+  - [ ] In-app tutorials and help center
 
 ---
 
 **Built with ❤️ for a smarter energy future**
 
 *SmartCashPower - Empowering communities through intelligent utility management*
+
+**Note**: This project is open to partnerships with energy providers and payment platforms. If you're interested in collaborating, please reach out!
