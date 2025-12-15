@@ -275,7 +275,7 @@ SmartCashPower is a comprehensive prepaid electricity management system featurin
 - Secure password reset workflow
 - Session management with JWT expiry
 
-### Production Recommendations
+### Production Recommendations for future development
 - Enable HTTPS/TLS encryption
 - Implement rate limiting
 - Add request logging and monitoring
@@ -400,11 +400,6 @@ Have an idea for improvement? We'd love to hear it!
 - Join discussions in existing issues
 - Reach out via email with suggestions
 
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
 
 ---
 
@@ -413,17 +408,10 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 **Developer**: Joseph Manizabayo  
 **Email**: josephmanizabayo7@gmail.com  
 **GitHub**: [@ManJoseph](https://github.com/ManJoseph)
+**LinkedIn**: [LinkedIn](https://www.linkedin.com/in/manjoseph/)
+**Phone**: +250 784 461 703
 
 For bug reports and feature requests, please open an issue on GitHub.
-
----
-
-## 🙏 Acknowledgments
-
-- Spring Boot team for the excellent framework
-- React team for the powerful UI library
-- PostgreSQL community for the robust database
-- All contributors and users of SmartCashPower
 
 ---
 
