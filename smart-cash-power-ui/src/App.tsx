@@ -212,9 +212,7 @@ const App = () => {
             currentUser ? (
               <Navigate to={resolveDestination(currentUser)} replace />
             ) : (
-              <div className="max-w-5xl mx-auto px-4 py-10">
-                <AuthScreen key="login" mode="login" onAuthenticated={handleAuthSuccess} />
-              </div>
+              <AuthScreen key="login" mode="login" onAuthenticated={handleAuthSuccess} />
             )
           }
         />
@@ -224,9 +222,7 @@ const App = () => {
             currentUser ? (
               <Navigate to={resolveDestination(currentUser)} replace />
             ) : (
-              <div className="max-w-5xl mx-auto px-4 py-10">
-                <AuthScreen key="signup" mode="signup" onAuthenticated={handleAuthSuccess} />
-              </div>
+              <AuthScreen key="signup" mode="signup" onAuthenticated={handleAuthSuccess} />
             )
           }
         />
@@ -407,91 +403,243 @@ const AuthScreen = ({ mode, onAuthenticated }: AuthScreenProps) => {
   };
 
   return (
-    <div className="w-full max-w-xl mx-auto bg-white shadow-lg rounded-2xl p-8 space-y-6">
-      <header className="text-center space-y-2">
-        <h1 className="text-4xl font-bold text-gray-800">SmartCashPower</h1>
-        <p className="text-gray-600">Smarter electricity for homes and businesses.</p>
-      </header>
-      {!isForgot ? (
-        <>
-          <form className="space-y-4" onSubmit={handleSubmit}>
-            {mode === 'signup' && (
-              <>
-                <input name="fullName" type="text" required className="w-full px-4 py-3 text-lg text-gray-700 bg-gray-100 rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Full Name" />
-                <input name="phoneNumber" type="tel" required className="w-full px-4 py-3 text-lg text-gray-700 bg-gray-100 rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Phone Number" />
-              </>
-            )}
-            <input name="email" type="email" required className="w-full px-4 py-3 text-lg text-gray-700 bg-gray-100 rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Email" />
-            <input name="password" type="password" required className="w-full px-4 py-3 text-lg text-gray-700 bg-gray-100 rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Password" />
-            {error && <p className="text-red-500 text-center">{error}</p>}
-            {successMessage && <p className="text-green-600 text-center">{successMessage}</p>}
-            <button type="submit" className="w-full px-4 py-3 font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-              {mode === 'login' ? 'Login' : 'Sign Up'}
-            </button>
-          </form>
-          {mode === 'login' && (
-            <button
-              type="button"
-              onClick={() => {
-                setIsForgot(true);
-                setError(null);
-                setSuccessMessage(null);
-              }}
-              className="mt-3 text-sm font-medium text-blue-600 hover:text-blue-500"
-            >
-              Forgot password?
-            </button>
-          )}
-          <div className="text-center">
-            <button onClick={toggleMode} className="mt-2 text-sm font-medium text-blue-600 hover:text-blue-500">
-              {mode === 'login' ? 'New user? Create an account' : 'Already have an account? Login'}
-            </button>
+    <div className="min-h-screen w-full flex items-center justify-center" style={{ background: 'var(--gradient-dark)' }}>
+      {/* Animated Background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 right-20 w-96 h-96 rounded-full blur-3xl animate-pulse" style={{ background: 'rgba(34, 197, 94, 0.08)' }}></div>
+        <div className="absolute bottom-20 left-20 w-96 h-96 rounded-full blur-3xl animate-pulse" style={{ background: 'rgba(34, 197, 94, 0.06)', animationDelay: '1s' }}></div>
+      </div>
+
+      <div className="relative w-full max-w-md mx-auto px-6 animate-fade-in">
+        {/* Logo/Header */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center gap-2 mb-4">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'var(--gradient-green)' }}>
+              <Zap className="w-7 h-7 text-white" />
+            </div>
+            <span className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+              SmartCashPower
+            </span>
           </div>
-        </>
-      ) : (
-        <>
-          <form className="space-y-4" onSubmit={handleForgotSubmit}>
-            <input
-              type="email"
-              value={forgotEmail}
-              onChange={(e) => setForgotEmail(e.target.value)}
-              required
-              placeholder="Enter your email"
-              className="w-full px-4 py-3 text-lg text-gray-700 bg-gray-100 rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            {error && <p className="text-red-500 text-center">{error}</p>}
-            {successMessage && <p className="text-green-600 text-center">{successMessage}</p>}
-            <button
-              type="submit"
-              disabled={isSendingReset}
-              className="w-full px-4 py-3 font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
-            >
-              {isSendingReset ? 'Sending...' : 'Send reset request'}
-            </button>
-          </form>
+          <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
+            {isForgot ? 'Reset Password' : mode === 'login' ? 'Welcome Back' : 'Create Account'}
+          </h1>
+          <p style={{ color: 'var(--text-secondary)' }}>
+            {isForgot 
+              ? 'Enter your email to request a password reset' 
+              : mode === 'login' 
+                ? 'Sign in to manage your electricity' 
+                : 'Join thousands managing their electricity smarter'}
+          </p>
+        </div>
+
+        {/* Form Card */}
+        <div className="p-8 rounded-2xl" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
+          {!isForgot ? (
+            <>
+              <form className="space-y-5" onSubmit={handleSubmit}>
+                {mode === 'signup' && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+                        Full Name
+                      </label>
+                      <input 
+                        name="fullName" 
+                        type="text" 
+                        required 
+                        placeholder="John Doe"
+                        className="w-full px-4 py-3 rounded-lg transition-all"
+                        style={{
+                          background: 'var(--bg-elevated)',
+                          border: '1px solid var(--border-default)',
+                          color: 'var(--text-primary)',
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+                        Phone Number
+                      </label>
+                      <input 
+                        name="phoneNumber" 
+                        type="tel" 
+                        required 
+                        placeholder="+250 XXX XXX XXX"
+                        className="w-full px-4 py-3 rounded-lg transition-all"
+                        style={{
+                          background: 'var(--bg-elevated)',
+                          border: '1px solid var(--border-default)',
+                          color: 'var(--text-primary)',
+                        }}
+                      />
+                    </div>
+                  </>
+                )}
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+                    Email Address
+                  </label>
+                  <input 
+                    name="email" 
+                    type="email" 
+                    required 
+                    placeholder="you@example.com"
+                    className="w-full px-4 py-3 rounded-lg transition-all"
+                    style={{
+                      background: 'var(--bg-elevated)',
+                      border: '1px solid var(--border-default)',
+                      color: 'var(--text-primary)',
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+                    Password
+                  </label>
+                  <input 
+                    name="password" 
+                    type="password" 
+                    required 
+                    placeholder="••••••••"
+                    className="w-full px-4 py-3 rounded-lg transition-all"
+                    style={{
+                      background: 'var(--bg-elevated)',
+                      border: '1px solid var(--border-default)',
+                      color: 'var(--text-primary)',
+                    }}
+                  />
+                </div>
+                
+                <button 
+                  type="submit" 
+                  className="w-full px-4 py-3 font-semibold rounded-lg transition-all duration-300 hover:scale-[1.02] flex items-center justify-center gap-2"
+                  style={{
+                    background: 'var(--gradient-green)',
+                    color: 'white',
+                    boxShadow: 'var(--shadow-md)',
+                  }}
+                >
+                  {mode === 'login' ? 'Sign In' : 'Create Account'}
+                  <CheckCircle className="w-5 h-5" />
+                </button>
+              </form>
+
+              {mode === 'login' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsForgot(true);
+                    setError(null);
+                    setSuccessMessage(null);
+                  }}
+                  className="mt-4 text-sm font-medium transition-colors"
+                  style={{ color: 'var(--green-primary)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--green-light)'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = 'var(--green-primary)'}
+                >
+                  Forgot password?
+                </button>
+              )}
+
+              <div className="mt-6 pt-6 text-center" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>
+                  {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}
+                </span>
+                <button 
+                  onClick={toggleMode} 
+                  className="ml-2 font-medium transition-colors"
+                  style={{ color: 'var(--green-primary)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--green-light)'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = 'var(--green-primary)'}
+                >
+                  {mode === 'login' ? 'Sign up' : 'Sign in'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <form className="space-y-5" onSubmit={handleForgotSubmit}>
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    required
+                    placeholder="you@example.com"
+                    disabled={isSendingReset}
+                    className="w-full px-4 py-3 rounded-lg transition-all"
+                    style={{
+                      background: 'var(--bg-elevated)',
+                      border: '1px solid var(--border-default)',
+                      color: 'var(--text-primary)',
+                    }}
+                  />
+                </div>
+                
+                <button
+                  type="submit"
+                  disabled={isSendingReset}
+                  className="w-full px-4 py-3 font-semibold rounded-lg transition-all duration-300 hover:scale-[1.02] disabled:opacity-50"
+                  style={{
+                    background: 'var(--gradient-green)',
+                    color: 'white',
+                  }}
+                >
+                  {isSendingReset ? 'Sending...' : 'Send Reset Request'}
+                </button>
+              </form>
+
+              <button
+                type="button"
+                disabled={!isAllowedToReset}
+                onClick={() => navigate(`/reset-password?email=${encodeURIComponent(forgotEmail)}`)}
+                className="mt-4 w-full px-4 py-3 font-semibold rounded-lg transition-all duration-300 disabled:opacity-50"
+                style={{
+                  background: isAllowedToReset ? 'var(--green-primary)' : 'var(--bg-elevated)',
+                  color: isAllowedToReset ? 'white' : 'var(--text-disabled)',
+                  border: `1px solid ${isAllowedToReset ? 'var(--green-primary)' : 'var(--border-default)'}`,
+                }}
+              >
+                {isAllowedToReset ? 'Continue to Reset Password' : 'Waiting for Admin Approval...'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsForgot(false);
+                  setError(null);
+                  setSuccessMessage(null);
+                  setForgotEmail('');
+                  setIsAllowedToReset(false);
+                }}
+                className="mt-4 text-sm font-medium transition-colors"
+                style={{ color: 'var(--green-primary)' }}
+                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--green-light)'}
+                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--green-primary)'}
+              >
+                ← Back to login
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* Back to Home Link */}
+        <div className="text-center mt-6">
           <button
-            type="button"
-            disabled={!isAllowedToReset}
-            onClick={() => navigate(`/reset-password?email=${encodeURIComponent(forgotEmail)}`)}
-            className={`mt-4 w-full px-4 py-3 font-semibold rounded-lg ${
-              isAllowedToReset ? 'bg-green-600 text-white' : 'bg-gray-300 text-gray-600'
-            }`}
+            onClick={() => navigate('/')}
+            className="text-sm font-medium transition-colors inline-flex items-center gap-1"
+            style={{ color: 'var(--text-secondary)' }}
+            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--green-primary)'}
+            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
           >
-            Continue
+            ← Back to Home
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              setIsForgot(false);
-              setError(null);
-              setSuccessMessage(null);
-            }}
-            className="mt-3 text-sm font-medium text-blue-600 hover:text-blue-500"
-          >
-            Back to login
-          </button>
-        </>
-      )}
+        </div>
+      </div>
     </div>
   );
 };
